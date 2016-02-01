@@ -1,0 +1,31 @@
+env:
+  global:
+    - secure: 
+    - RUST_BACKTRACE=1
+    - RUST_TEST_THREADS=1
+os:
+  - linux
+  - osx
+language: rust
+rust:
+#  - nightly
+#  - beta
+  - stable
+sudo: false
+branches:
+  only:
+    - master
+cache:
+  directories:
+    - $HOME/libsodium
+    - $HOME/elfutils
+install:
+  - curl -sSLO https://github.com/maidsafe/QA/raw/master/Bash%20Scripts/Travis/install_libsodium.sh
+  - . install_libsodium.sh
+script:
+  - curl -sSL https://github.com/maidsafe/QA/raw/master/Bash%20Scripts/Travis/build_and_run_tests.sh | bash
+before_cache:
+  - curl -sSLO https://github.com/maidsafe/QA/raw/master/Bash%20Scripts/Travis/install_elfutils.sh
+  - . install_elfutils.sh
+after_success:
+  - curl -sSL https://github.com/maidsafe/QA/raw/master/Bash%20Scripts/Travis/after_success.sh | bash
