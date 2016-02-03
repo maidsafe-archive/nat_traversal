@@ -1,31 +1,30 @@
 env:
   global:
-    - secure: 
-    - RUST_BACKTRACE=1
-    - RUST_TEST_THREADS=1
+  - RUST_BACKTRACE=1
+  - secure: boQBA57eFJWzTvftZlI4QiEaS5UPiBXbT3vDRh0aEMBcIIK+ROajEnIhKceBzg2Lzc6Ckbj3Ziyu9Bx1urQRsA967LzX4ILqA0Js6fZ0G+Q0au1AIrK7gWcygfMSQ4aF8l+acGIlqWdcnASskNklE1aa790T3iZtAegpu/9o9rBRb618EAjCQ3Pn/88voeUVxzgVwIT6wA/sfbSPUqddcABWl8QG4JJjOQMgzpNjunEok9z6NTbkl8Wws8a7LLlYnSDehfJtRN2jciU/+QLSg2XIH/cbwo4VeU5P90hMUF+2859n5EsPgEKy2oabqMare+EGO/8tcJeXBXLxV3DbxSs2R0wKS0R9BTYkltdLyhFd0+kAEMEqZG5WrKg+ih9VPNBFBIKsY7a98QCAzwHRNYtad6BSV1mtNrWwqz7uqRBw+5zcjl9EYq1YAQ0RxwXmOcYPZWHIGXNmqXbcJJaMnK9thqYu7s2d/6dOtiBiR9gW5cIrZCgFvagSWp/8ViVKm53WJ+hs6jbo97H3JYU+cO+SGLvA6Rvc10SITEzpy71DewzRHdNHwjRqzjIgd8iEcnL6kbwlIYHyBkRoknKmqqg/W6Rqi5u6QHn2XZA3xtExkW/s7FlfFE6buZOs7xk+84V6KcOsWTNPHpW3iMY/6iL33eVD7PR5hL8I9Rufoq8=
 os:
-  - linux
-  - osx
+- linux
+- osx
 language: rust
 rust:
-#  - nightly
-#  - beta
-  - stable
+- stable
 sudo: false
 branches:
   only:
-    - master
+  - master
 cache:
   directories:
-    - $HOME/libsodium
-    - $HOME/elfutils
+  - "$HOME/libsodium"
+  - "$HOME/elfutils"
 install:
-  - curl -sSLO https://github.com/maidsafe/QA/raw/master/Bash%20Scripts/Travis/install_libsodium.sh
-  - . install_libsodium.sh
+- curl -sSLO https://github.com/maidsafe/QA/raw/master/Bash%20Scripts/Travis/install_libsodium.sh
+- ". install_libsodium.sh"
 script:
-  - curl -sSL https://github.com/maidsafe/QA/raw/master/Bash%20Scripts/Travis/build_and_run_tests.sh | bash
+- curl -sSL https://github.com/maidsafe/QA/raw/master/Bash%20Scripts/Travis/build_and_run_tests.sh
+  | bash
 before_cache:
-  - curl -sSLO https://github.com/maidsafe/QA/raw/master/Bash%20Scripts/Travis/install_elfutils.sh
-  - . install_elfutils.sh
+- curl -sSLO https://github.com/maidsafe/QA/raw/master/Bash%20Scripts/Travis/install_elfutils.sh
+- ". install_elfutils.sh"
 after_success:
-  - curl -sSL https://github.com/maidsafe/QA/raw/master/Bash%20Scripts/Travis/after_success.sh | bash
+- curl -sSL https://github.com/maidsafe/QA/raw/master/Bash%20Scripts/Travis/after_success.sh
+  | bash
