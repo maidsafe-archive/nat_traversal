@@ -58,6 +58,7 @@ extern crate socket_addr;
 extern crate get_if_addrs;
 extern crate sodiumoxide;
 extern crate libc;
+extern crate w_result;
 
 pub use mappingcontext::MappingContext;
 pub use holepunchserveraddr::HolePunchServerAddr;
