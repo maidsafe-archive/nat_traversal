@@ -18,6 +18,8 @@
 //! # `nat_traversal`
 //! NAT traversal utilities.
 
+use rand;
+
 use mappedsocketaddr::MappedSocketAddr;
 
 /// Info exchanged by both parties before performing a rendezvous connection.
@@ -37,7 +39,15 @@ pub struct PrivRendezvousInfo {
 /// mapped socket addresses.
 pub fn gen_rendezvous_info(endpoints: Vec<MappedSocketAddr>)
                            -> (PrivRendezvousInfo, PubRendezvousInfo) {
-    unimplemented!();
+    let secret = rand::random();
+    let priv_info = PrivRendezvousInfo {
+        secret: secret,
+    };
+    let pub_info = PubRendezvousInfo {
+        endpoints: endpoints,
+        secret: secret,
+    };
+    (priv_info, pub_info)
 }
 
 pub fn decompose(info: PubRendezvousInfo) -> (Vec<MappedSocketAddr>, [u8; 4]) {
