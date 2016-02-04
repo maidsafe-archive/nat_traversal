@@ -91,6 +91,16 @@
 <span id="48">48</span>
 <span id="49">49</span>
 <span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
 </pre><pre class='rust '>
 <span class='comment'>// Copyright 2016 MaidSafe.net limited.</span>
 <span class='comment'>//</span>
@@ -112,6 +122,8 @@
 <span class='doccomment'>//! # `nat_traversal`</span>
 <span class='doccomment'>//! NAT traversal utilities.</span>
 
+<span class='kw'>use</span> <span class='ident'>rand</span>;
+
 <span class='kw'>use</span> <span class='ident'>mappedsocketaddr</span>::<span class='ident'>MappedSocketAddr</span>;
 
 <span class='doccomment'>/// Info exchanged by both parties before performing a rendezvous connection.</span>
@@ -131,7 +143,15 @@
 <span class='doccomment'>/// mapped socket addresses.</span>
 <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>gen_rendezvous_info</span>(<span class='ident'>endpoints</span>: <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>MappedSocketAddr</span><span class='op'>&gt;</span>)
                            <span class='op'>-&gt;</span> (<span class='ident'>PrivRendezvousInfo</span>, <span class='ident'>PubRendezvousInfo</span>) {
-    <span class='macro'>unimplemented</span><span class='macro'>!</span>();
+    <span class='kw'>let</span> <span class='ident'>secret</span> <span class='op'>=</span> <span class='ident'>rand</span>::<span class='ident'>random</span>();
+    <span class='kw'>let</span> <span class='ident'>priv_info</span> <span class='op'>=</span> <span class='ident'>PrivRendezvousInfo</span> {
+        <span class='ident'>secret</span>: <span class='ident'>secret</span>,
+    };
+    <span class='kw'>let</span> <span class='ident'>pub_info</span> <span class='op'>=</span> <span class='ident'>PubRendezvousInfo</span> {
+        <span class='ident'>endpoints</span>: <span class='ident'>endpoints</span>,
+        <span class='ident'>secret</span>: <span class='ident'>secret</span>,
+    };
+    (<span class='ident'>priv_info</span>, <span class='ident'>pub_info</span>)
 }
 
 <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>decompose</span>(<span class='ident'>info</span>: <span class='ident'>PubRendezvousInfo</span>) <span class='op'>-&gt;</span> (<span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>MappedSocketAddr</span><span class='op'>&gt;</span>, [<span class='ident'>u8</span>; <span class='number'>4</span>]) {
