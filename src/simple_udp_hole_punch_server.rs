@@ -18,8 +18,8 @@
 //! # `nat_traversal`
 //! NAT traversal utilities.
 
-use mappingcontext::MappingContext;
-use mappedsocketaddr::MappedSocketAddr;
+use mapping_context::MappingContext;
+use mapped_socket_addr::MappedSocketAddr;
 
 /// RAII type for a hole punch server which speaks the simple hole punching protocol.
 pub struct SimpleUdpHolePunchServer<'a> {

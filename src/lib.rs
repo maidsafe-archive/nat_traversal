@@ -60,24 +60,25 @@ extern crate sodiumoxide;
 extern crate libc;
 extern crate w_result;
 
-pub use mappingcontext::MappingContext;
-pub use holepunchserveraddr::HolePunchServerAddr;
-pub use mappedsocketaddr::MappedSocketAddr;
-pub use rendezvousinfo::{PrivRendezvousInfo, PubRendezvousInfo,
+pub use mapping_context::MappingContext;
+pub use hole_punch_server_addr::HolePunchServerAddr;
+pub use mapped_socket_addr::MappedSocketAddr;
+pub use rendezvous_info::{PrivRendezvousInfo, PubRendezvousInfo,
                          gen_rendezvous_info};
-pub use mappedudpsocket::MappedUdpSocket;
-pub use punchedudpsocket::PunchedUdpSocket;
-pub use mappedtcpsocket::{MappedTcpSocket, tcp_punch_hole};
-pub use simpleudpholepunchserver::SimpleUdpHolePunchServer;
+pub use mapped_udp_socket::MappedUdpSocket;
+pub use punched_udp_socket::PunchedUdpSocket;
+pub use mapped_tcp_socket::{MappedTcpSocket, tcp_punch_hole};
+pub use simple_udp_hole_punch_server::SimpleUdpHolePunchServer;
 
-mod mappingcontext;
-mod holepunchserveraddr;
-mod mappedsocketaddr;
-mod rendezvousinfo;
-mod mappedudpsocket;
-mod punchedudpsocket;
-mod mappedtcpsocket;
-mod simpleudpholepunchserver;
+mod mapping_context;
+mod hole_punch_server_addr;
+mod mapped_socket_addr;
+mod rendezvous_info;
+mod mapped_udp_socket;
+mod punched_udp_socket;
+mod mapped_tcp_socket;
+mod simple_udp_hole_punch_server;
 mod periodic_sender;
 mod socket_utils;
 mod listener_message;
+

@@ -26,11 +26,11 @@ use get_if_addrs;
 use maidsafe_utilities::serialisation::{deserialise, serialise};
 use socket_addr::SocketAddr;
 
-use holepunchserveraddr::HolePunchServerAddr;
+use hole_punch_server_addr::HolePunchServerAddr;
 use listener_message::{ListenerRequest, ListenerResponse};
-use mappingcontext;
-use mappingcontext::MappingContext;
-use mappedsocketaddr::MappedSocketAddr;
+use mapping_context;
+use mapping_context::MappingContext;
+use mapped_socket_addr::MappedSocketAddr;
 use periodic_sender::PeriodicSender;
 
 // TODO(canndrew): This should return a Vec of SocketAddrs rather than a single SocketAddr. The Vec
@@ -92,7 +92,7 @@ impl MappedUdpSocket {
     /// Map an existing `UdpSocket`.
     pub fn map(socket: UdpSocket, mc: &MappingContext)
                -> io::Result<MappedUdpSocket> {
-        let servers = mappingcontext::simple_servers(mc);
+        let servers = mapping_context::simple_servers(mc);
         external_udp_socket(socket, servers).map(|(socket, endpoints)| {
             MappedUdpSocket {
                 socket: socket,

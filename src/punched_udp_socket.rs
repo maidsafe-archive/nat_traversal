@@ -24,8 +24,8 @@ use std::net::UdpSocket;
 use socket_addr::SocketAddr;
 
 use periodic_sender::PeriodicSender;
-use rendezvousinfo::{PrivRendezvousInfo, PubRendezvousInfo};
-use rendezvousinfo;
+use rendezvous_info::{PrivRendezvousInfo, PubRendezvousInfo};
+use rendezvous_info;
 use socket_utils::RecvUntil;
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
@@ -150,9 +150,9 @@ impl PunchedUdpSocket {
                       their_pub_rendezvous_info: PubRendezvousInfo)
         -> io::Result<PunchedUdpSocket> {
         let (endpoints, their_secret)
-            = rendezvousinfo::decompose(their_pub_rendezvous_info);
+            = rendezvous_info::decompose(their_pub_rendezvous_info);
         let our_secret
-            = rendezvousinfo::get_priv_secret(our_priv_rendezvous_info);
+            = rendezvous_info::get_priv_secret(our_priv_rendezvous_info);
 
         for endpoint in endpoints {
             let addr = {
