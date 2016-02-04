@@ -20,7 +20,7 @@
 
 use rand;
 
-use mappedsocketaddr::MappedSocketAddr;
+use mapped_socket_addr::MappedSocketAddr;
 
 /// Info exchanged by both parties before performing a rendezvous connection.
 pub struct PubRendezvousInfo {

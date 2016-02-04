@@ -22,9 +22,9 @@ use std::net::TcpStream;
 
 use net2;
 
-use mappingcontext::MappingContext;
-use mappedsocketaddr::MappedSocketAddr;
-use rendezvousinfo::{PrivRendezvousInfo, PubRendezvousInfo};
+use mapping_context::MappingContext;
+use mapped_socket_addr::MappedSocketAddr;
+use rendezvous_info::{PrivRendezvousInfo, PubRendezvousInfo};
 
 /// A tcp socket for which we know our external endpoints.
 pub struct MappedTcpSocket {

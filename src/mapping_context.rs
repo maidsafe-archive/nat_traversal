@@ -31,7 +31,7 @@ use socket_addr::SocketAddr;
 use w_result::WResult::{self, WOk, WErr};
 use get_if_addrs;
 
-use holepunchserveraddr::HolePunchServerAddr;
+use hole_punch_server_addr::HolePunchServerAddr;
 
 /// You need to create a `MappingContext` before doing any socket mapping. This
 /// `MappingContext` should ideally be kept throughout the lifetime of the
