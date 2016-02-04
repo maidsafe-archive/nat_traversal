@@ -62,7 +62,8 @@ extern crate libc;
 pub use mappingcontext::MappingContext;
 pub use holepunchserveraddr::HolePunchServerAddr;
 pub use mappedsocketaddr::MappedSocketAddr;
-pub use rendezvousinfo::RendezvousInfo;
+pub use rendezvousinfo::{PrivRendezvousInfo, PubRendezvousInfo,
+                         gen_rendezvous_info};
 pub use mappedudpsocket::MappedUdpSocket;
 pub use punchedudpsocket::PunchedUdpSocket;
 pub use mappedtcpsocket::{MappedTcpSocket, tcp_punch_hole};

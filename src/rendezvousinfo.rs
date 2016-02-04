@@ -20,22 +20,31 @@
 
 use mappedsocketaddr::MappedSocketAddr;
 
-/// Info needed by both parties when performing a rendezvous connection.
-pub struct RendezvousInfo {
+/// Info exchanged by both parties before performing a rendezvous connection.
+pub struct PubRendezvousInfo {
     /// A vector of all the mapped addresses that the peer can try connecting to.
     endpoints: Vec<MappedSocketAddr>,
     /// Used to identify the peer.
     secret: [u8; 4],
 }
 
-impl RendezvousInfo {
-    /// Create rendezvous info for being sent to the remote peer.
-    pub fn from_endpoints(endpoints: Vec<MappedSocketAddr>) -> RendezvousInfo {
-        unimplemented!();
-    }
+/// The local half of a `PubRendezvousInfo`.
+pub struct PrivRendezvousInfo {
+    secret: [u8; 4],
 }
 
-pub fn decompose(info: RendezvousInfo) -> (Vec<MappedSocketAddr>, [u8; 4]) {
-    let RendezvousInfo { endpoints, secret } = info;
+/// Create a `(PrivRendezvousInfo, PubRendezvousInfo)` pair from a list of
+/// mapped socket addresses.
+pub fn gen_rendezvous_info(endpoints: Vec<MappedSocketAddr>)
+                           -> (PrivRendezvousInfo, PubRendezvousInfo) {
+    unimplemented!();
+}
+
+pub fn decompose(info: PubRendezvousInfo) -> (Vec<MappedSocketAddr>, [u8; 4]) {
+    let PubRendezvousInfo { endpoints, secret } = info;
     (endpoints, secret)
+}
+
+pub fn get_priv_secret(info: PrivRendezvousInfo) -> [u8; 4] {
+    info.secret
 }

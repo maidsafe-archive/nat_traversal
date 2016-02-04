@@ -24,7 +24,7 @@ use net2;
 
 use mappingcontext::MappingContext;
 use mappedsocketaddr::MappedSocketAddr;
-use rendezvousinfo::RendezvousInfo;
+use rendezvousinfo::{PrivRendezvousInfo, PubRendezvousInfo};
 
 /// A tcp socket for which we know our external endpoints.
 pub struct MappedTcpSocket {
@@ -54,6 +54,8 @@ impl MappedTcpSocket {
 /// Perform a tcp rendezvous connect. `socket` should have been obtained from a
 /// `MappedTcpSocket`.
 pub fn tcp_punch_hole(socket: net2::TcpBuilder,
-                      their_rendezvous_info: RendezvousInfo) -> TcpStream {
+                      our_priv_rendezvous_info: PrivRendezvousInfo,
+                      their_pub_rendezvous_info: PubRendezvousInfo)
+                      -> TcpStream {
     unimplemented!();
 }

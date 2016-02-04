@@ -24,7 +24,7 @@ use std::net::UdpSocket;
 use socket_addr::SocketAddr;
 
 use periodic_sender::PeriodicSender;
-use rendezvousinfo::RendezvousInfo;
+use rendezvousinfo::{PrivRendezvousInfo, PubRendezvousInfo};
 use rendezvousinfo;
 use socket_utils::RecvUntil;
 
@@ -145,18 +145,22 @@ pub struct PunchedUdpSocket {
 
 impl PunchedUdpSocket {
     /// Punch a udp socket using a mapped socket and the peer's rendezvous info.
-    pub fn punch_hole(mut socket: UdpSocket, our_secret: [u8; 4],
-                      their_rendezvous_info: RendezvousInfo)
+    pub fn punch_hole(mut socket: UdpSocket,
+                      our_priv_rendezvous_info: PrivRendezvousInfo,
+                      their_pub_rendezvous_info: PubRendezvousInfo)
         -> io::Result<PunchedUdpSocket> {
-        let (endpoints, secret)
-            = rendezvousinfo::decompose(their_rendezvous_info);
+        let (endpoints, their_secret)
+            = rendezvousinfo::decompose(their_pub_rendezvous_info);
+        let our_secret
+            = rendezvousinfo::get_priv_secret(our_priv_rendezvous_info);
+
         for endpoint in endpoints {
             let addr = {
                 use std::net::SocketAddr as SA;
                 SocketAddr(SA::V4(endpoint.addr))
             };
-            let (s, r) = blocking_udp_punch_hole(socket, our_secret,
-                                                 secret.clone(), addr);
+            let (s, r) = blocking_udp_punch_hole(socket, our_secret.clone(),
+                                                 their_secret.clone(), addr);
             socket = s;
             if let Ok(peer_addr) = r {
                 return Ok(PunchedUdpSocket {
