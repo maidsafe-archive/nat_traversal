@@ -22,6 +22,7 @@ use std::io;
 use std::net::UdpSocket;
 use std::net;
 use std::time::Duration;
+use std::collections::HashSet;
 
 use igd;
 use time;
@@ -38,54 +39,6 @@ use mapped_socket_addr::MappedSocketAddr;
 use periodic_sender::PeriodicSender;
 use socket_utils;
 use socket_utils::RecvUntil;
-
-// TODO(canndrew): This should return a Vec of SocketAddrs rather than a single SocketAddr. The Vec
-// should contain all known addresses of the socket.
-fn external_udp_socket(udp_socket: UdpSocket,
-                       peer_udp_listeners: Vec<SocketAddr>)
-                       -> io::Result<(UdpSocket, Vec<SocketAddr>)> {
-    const MAX_DATAGRAM_SIZE: usize = 256;
-
-    let port = try!(udp_socket.local_addr()).port();
-    let cloned_udp_socket = try!(udp_socket.try_clone());
-
-    let send_data = unwrap_result!(serialise(&ListenerRequest::EchoExternalAddr));
-
-    let if_addrs: Vec<SocketAddr> = try!(get_if_addrs::get_if_addrs())
-                                        .into_iter()
-                                        .map(|i| SocketAddr::new(i.addr.ip(), port))
-                                        .collect();
-
-    let res = try!(::crossbeam::scope(|scope| -> io::Result<Vec<SocketAddr>> {
-        // TODO Instead of periodic sender just send the request to every body and start listening.
-        // If we get it back from even one, we collect the info and return.
-        for udp_listener in &peer_udp_listeners {
-            let cloned_udp_socket = try!(cloned_udp_socket.try_clone());
-            let _periodic_sender = PeriodicSender::start(cloned_udp_socket,
-                                                         *udp_listener,
-                                                         scope,
-                                                         &send_data[..],
-                                                         ::std::time::Duration::from_millis(300));
-            let deadline = time::SteadyTime::now() + time::Duration::seconds(2);
-            let mut recv_data = [0u8; MAX_DATAGRAM_SIZE];
-            let (read_size, recv_addr) = match udp_socket.recv_until(&mut recv_data[..], deadline) {
-                Ok(Some(res)) => res,
-                Ok(None) => continue,
-                Err(_) => continue,
-            };
-
-            if let Ok(ListenerResponse::EchoExternalAddr { external_addr }) =
-                   deserialise::<ListenerResponse>(&recv_data[..read_size]) {
-                let mut addrs = vec![external_addr];
-                addrs.extend(if_addrs);
-                return Ok(addrs);
-            }
-        }
-        Ok(if_addrs)
-    }));
-
-    Ok((udp_socket, res))
-}
 
 /// A bound udp socket for which we know our external endpoints.
 pub struct MappedUdpSocket {
@@ -155,7 +108,7 @@ impl MappedUdpSocket {
                     let gateway_opt = match gateway_opt_opt {
                         Some(gateway_opt) => gateway_opt,
                         // We don't where this local address came from so search for an IGD gateway
-                        // at it.
+                        // at it.(
                         None => {
                             match igd::search_gateway_from_timeout(ipv4_addr, Duration::from_secs(1)) {
                                 Ok(gateway) => Some(gateway),
@@ -205,20 +158,71 @@ impl MappedUdpSocket {
             },
         };
 
-        // Try to find other endpoint addresses using hole punch servers.
-        // TODO(canndrew): parallelise this. Also we don't really want to contact *all* hole
-        // punching servers that we know of. We can be smarter than that.
-        let servers = mapping_context::simple_servers(mc);
-        external_udp_socket(socket, servers).map(|(socket, endpoints)| {
-            MappedUdpSocket {
-                socket: socket,
-                endpoints: endpoints.into_iter().map(|a| {
-                    MappedSocketAddr {
-                        addr: a,
-                        nat_restricted: true,
+        const MAX_DATAGRAM_SIZE: usize = 256;
+
+        let send_data = unwrap_result!(serialise(&ListenerRequest::EchoExternalAddr));
+        let mut simple_servers: HashSet<SocketAddr> = mapping_context::simple_servers(&mc)
+                                                                      .into_iter().collect();
+        let mut deadline = time::SteadyTime::now();
+        // Ping all the simple servers and waiting for a response.
+        // Run this loop at most 8 times for a maximum timeout of 250ms * 8 == 2 seconds.
+        let mut attempt = 0;
+        let mut max_attempts = 8;
+        while attempt < max_attempts && simple_servers.len() > 0 {
+            attempt += 1;
+            deadline = deadline + time::Duration::milliseconds(250);
+
+            // TODO(canndrew): We should limit the number of servers that we send to. If the user
+            // has added two thousand servers we really don't want to be pinging all of them. We
+            // should be smart about it though and try to ping servers that are on different
+            // networks, not just the first ten in the list or something.
+            for simple_server in &simple_servers {
+                // TODO(canndrew): What should we do if we get a partial write?
+                let _ = try!(socket.send_to(&send_data[..], &**simple_server));
+            };
+            let mut recv_data = [0u8; MAX_DATAGRAM_SIZE];
+            loop {
+                let (read_size, recv_addr) = match try!(socket.recv_until(&mut recv_data[..], deadline)) {
+                    Some(res) => res,
+                    None => break,
+                };
+                if let Ok(ListenerResponse::EchoExternalAddr { external_addr }) =
+                       deserialise::<ListenerResponse>(&recv_data[..read_size]) {
+                    // Don't ping this simple server again while mapping this socket.
+                    simple_servers.remove(&recv_addr);
+
+                    // If the address that responded to us is global then drop max_attempts to exit
+                    // the loop more quickly. The logic here is that global addresses are the ones
+                    // that are likely to take the longest to respond and they're all likely to
+                    // give us the same address. By contrast, servers on the same subnet as us or
+                    // behind the same carrier-level NAT are likely to respond in under a second.
+                    // So once we have one global address drop the timeout.
+                    // TODO(canndrew): For now this is commented-out. Waiting for the is_global
+                    // method to become available in the next stable rust.
+                    /*
+                    if recv_addr.ip().is_global() {
+                        max_attempts = 4;
+                    };
+                    */
+
+                    // Add this endpoint if we don't already know about it. We may have found it
+                    // through IGD or it may be a local interface.
+                    if endpoints.iter().all(|e| e.addr != external_addr) {
+                        endpoints.push(MappedSocketAddr {
+                            addr: external_addr,
+                            // TODO(canndrew): We should consider ways to determine whether this is
+                            // actually an restricted port. For now, just assume it's restricted. It
+                            // usually will be.
+                            nat_restricted: true,
+                        });
                     }
-                }).collect()
+                }
             }
+        }
+
+        Ok(MappedUdpSocket {
+            socket: socket,
+            endpoints: endpoints,
         })
     }
 

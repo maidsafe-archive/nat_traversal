@@ -155,6 +155,10 @@ impl MappingContext {
             // TODO(canndrew): use is_loopback when it's stable
             //if addr.is_loopback() {
             if addr_v4.octets()[0] == 127 {
+                interfaces_v4.push(InterfaceV4 {
+                    gateway: None,
+                    addr: addr_v4,
+                });
                 continue;
             };
             let if_name = interface.name;
