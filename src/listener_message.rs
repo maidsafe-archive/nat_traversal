@@ -22,21 +22,11 @@ use socket_addr::SocketAddr;
 #[derive(RustcEncodable, RustcDecodable)]
 pub enum ListenerRequest {
     EchoExternalAddr,
-    Connect {
-        secret: [u8; 4],
-        pub_key: PublicKey,
-    },
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub enum ListenerResponse {
     EchoExternalAddr {
         external_addr: SocketAddr,
-    },
-    Connect {
-        connect_on: Vec<SocketAddr>,
-        secret: [u8; 4],
-        their_secret: [u8; 4],
-        pub_key: PublicKey,
     },
 }

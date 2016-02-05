@@ -18,24 +18,122 @@
 //! # `nat_traversal`
 //! NAT traversal utilities.
 
+use std::io;
+use std::net;
+use std::net::UdpSocket;
+use std::time::Duration;
+use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use get_if_addrs;
+use maidsafe_utilities::serialisation::{deserialise, serialise};
+use maidsafe_utilities::thread::RaiiThreadJoiner;
+use rand;
+use sodiumoxide::crypto::sign::PublicKey;
+
+use socket_addr::SocketAddr;
+use listener_message::{ListenerRequest, ListenerResponse};
+
 use mapping_context::MappingContext;
 use mapped_socket_addr::MappedSocketAddr;
+
+const UDP_READ_TIMEOUT_SECS: u64 = 2;
 
 /// RAII type for a hole punch server which speaks the simple hole punching protocol.
 pub struct SimpleUdpHolePunchServer<'a> {
     mapping_context: &'a MappingContext,
+    stop_flag: Arc<AtomicBool>,
+    _raii_joiner: RaiiThreadJoiner,
 }
 
 impl<'a> SimpleUdpHolePunchServer<'a> {
     /// Create a new server. This will spawn a background thread which will serve requests until
     /// the server is dropped.
     pub fn new(mapping_context: &'a MappingContext)
-        -> SimpleUdpHolePunchServer<'a> {
-        unimplemented!();
+        -> io::Result<SimpleUdpHolePunchServer<'a>> {
+        let udp_socket = try!(UdpSocket::bind("0.0.0.0:0"));
+        let stop_flag = Arc::new(AtomicBool::new(false));
+        let cloned_stop_flag = stop_flag.clone();
+
+        try!(udp_socket.set_read_timeout(Some(Duration::from_secs(UDP_READ_TIMEOUT_SECS))));
+        let port = try!(udp_socket.local_addr()).port();
+
+        const MAX_READ_SIZE: usize = 1024;
+
+        let mut read_buf = [0; MAX_READ_SIZE];
+
+        let raii_joiner = RaiiThreadJoiner::new(thread!("SimpleUdpHolePunchServer", move || {
+            Self::run(udp_socket, cloned_stop_flag);
+        }));
+
+        Ok(SimpleUdpHolePunchServer {
+            mapping_context: mapping_context,
+            stop_flag: stop_flag,
+            _raii_joiner: raii_joiner,
+        })
+    }
+
+    fn run(udp_socket: UdpSocket,
+           stop_flag: Arc<AtomicBool>) {
+        let mut read_buf = [0; 1024];
+
+        while !stop_flag.load(Ordering::SeqCst) {
+            if let Ok((bytes_read, peer_addr)) = udp_socket.recv_from(&mut read_buf) {
+                if let Ok(msg) = deserialise::<ListenerRequest>(&read_buf[..bytes_read]) {
+                    SimpleUdpHolePunchServer::handle_request(msg,
+                                                             &udp_socket,
+                                                             peer_addr);
+                } else if let Ok(msg) = deserialise::<ListenerResponse>(&read_buf[..bytes_read]) {
+                    SimpleUdpHolePunchServer::handle_response(msg,
+                                                              &udp_socket,
+                                                              peer_addr);
+                }
+            }
+        }
+    }
+
+    fn handle_request(msg: ListenerRequest,
+                      udp_socket: &UdpSocket,
+                      peer_addr: net::SocketAddr) {
+        match msg {
+            ListenerRequest::EchoExternalAddr => {
+                let resp = ListenerResponse::EchoExternalAddr {
+                    external_addr: SocketAddr(peer_addr.clone()),
+                };
+
+                let _ = udp_socket.send_to(&unwrap_result!(serialise(&resp)), peer_addr);
+            }
+        }
+    }
+
+    fn handle_response(_msg: ListenerResponse,
+                       _udp_socket: &UdpSocket,
+                       _peer_addr: net::SocketAddr) {
+        // This is currently unimplemented as SimpleUdpHolePunchServer should not have made
+        // any request - it is supposed to get requests, not make one
+        match _msg {
+            ListenerResponse::EchoExternalAddr { external_addr, } => unimplemented!(),
+        }
     }
 
     /// Get the external addresses of this server to be shared with peers.
     pub fn addresses(&self) -> Vec<MappedSocketAddr> {
+        // TODO:
+
+        // The idea was it would need to know it's own external IP and whether
+        // it has an open port or not.  And it might occasionally need to make
+        // sure its port is still mapped. ie still open on the router
+
+        // So it wants to find external ports with `nat_restricted ==
+        // false`. Those are the only ones worth sharing with other peers. it
+        // can get those by doing upnp for example
         unimplemented!();
+    }
+}
+
+impl<'a> Drop for SimpleUdpHolePunchServer<'a> {
+    fn drop(&mut self) {
+        self.stop_flag.store(true, Ordering::SeqCst);
     }
 }
