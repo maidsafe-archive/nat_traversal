@@ -23,6 +23,7 @@ use std::net::UdpSocket;
 use std::net;
 use std::time::Duration;
 
+use time;
 use get_if_addrs;
 use ip::{SocketAddrExt, IpAddr};
 use maidsafe_utilities::serialisation::{deserialise, serialise};
@@ -35,6 +36,7 @@ use mapping_context::MappingContext;
 use mapped_socket_addr::MappedSocketAddr;
 use periodic_sender::PeriodicSender;
 use socket_utils;
+use socket_utils::RecvUntil;
 
 // TODO(canndrew): This should return a Vec of SocketAddrs rather than a single SocketAddr. The Vec
 // should contain all known addresses of the socket.
@@ -44,7 +46,6 @@ fn external_udp_socket(udp_socket: UdpSocket,
     const MAX_DATAGRAM_SIZE: usize = 256;
 
     let port = try!(udp_socket.local_addr()).port();
-    try!(udp_socket.set_read_timeout(Some(Duration::from_secs(2))));
     let cloned_udp_socket = try!(udp_socket.try_clone());
 
     let send_data = unwrap_result!(serialise(&ListenerRequest::EchoExternalAddr));
@@ -64,9 +65,11 @@ fn external_udp_socket(udp_socket: UdpSocket,
                                                          scope,
                                                          &send_data[..],
                                                          ::std::time::Duration::from_millis(300));
+            let deadline = time::SteadyTime::now() + time::Duration::seconds(2);
             let mut recv_data = [0u8; MAX_DATAGRAM_SIZE];
-            let (read_size, recv_addr) = match udp_socket.recv_from(&mut recv_data[..]) {
-                Ok(res) => res,
+            let (read_size, recv_addr) = match udp_socket.recv_until(&mut recv_data[..], deadline) {
+                Ok(Some(res)) => res,
+                Ok(None) => continue,
                 Err(_) => continue,
             };
 
