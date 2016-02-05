@@ -16,7 +16,7 @@
 // relating to use of the SAFE Network Software.
 
 use std::io;
-use std::net::UdpSocket;
+use std::net::{UdpSocket, Ipv4Addr, Ipv6Addr};
 use socket_addr::SocketAddr;
 use std::io::ErrorKind;
 use net2::TcpBuilder;
@@ -67,6 +67,16 @@ impl RecvUntil for UdpSocket {
             }
         }
     }
+}
+
+// TODO(canndrew): Remove this once #[feature(ip)] is stable
+pub fn ipv4_is_unspecified(addr: &Ipv4Addr) -> bool {
+    addr.octets() == [0, 0, 0, 0]
+}
+
+// TODO(canndrew): Remove this once #[feature(ip)] is stable
+pub fn ipv6_is_unspecified(addr: &Ipv6Addr) -> bool {
+    addr.segments() == [0, 0, 0, 0, 0, 0, 0, 0]
 }
 
 #[cfg(target_family = "unix")]

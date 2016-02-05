@@ -18,12 +18,12 @@
 //! # `nat_traversal`
 //! NAT traversal utilities.
 
-use std::net::SocketAddrV4;
+use std::net::SocketAddr;
 
 /// A socket address obtained through some mapping technique.
 pub struct MappedSocketAddr {
     /// The mapped address
-    pub addr: SocketAddrV4,
+    pub addr: SocketAddr,
 
     /// Indicated that hole punching needs to be used for an external client to connect to this
     /// address. `nat_restricted` will not be set if this is a fully mapped address such as the

@@ -26,6 +26,7 @@ use std;
 use std::thread;
 use std::time::Duration;
 
+use ip::IpAddr;
 use igd;
 use socket_addr::SocketAddr;
 use w_result::WResult::{self, WOk, WErr};
@@ -39,6 +40,7 @@ use hole_punch_server_addr::HolePunchServerAddr;
 /// servers.
 pub struct MappingContext {
     servers: RwLock<Vec<HolePunchServerAddr>>,
+    if_addrs: Vec<IpAddr>,
 }
 
 /// Errors that can occur when trying to create a `MappingContext`.
@@ -120,10 +122,11 @@ impl MappingContext {
             Ok(if_addrs) => if_addrs,
             Err(e) => return WErr(MappingContextNewError::ListInterfaces(e)),
         };
+        let mut if_addrs = Vec::with_capacity(interfaces.len());
         let mut warnings = Vec::new();
         let mut search_threads = Vec::new();
         for interface in interfaces {
-            let if_name = interface.name;
+            if_addrs.push(interface.ip());
             let addr = match interface.addr {
                 get_if_addrs::IfAddr::V4(v4_addr) => v4_addr.ip,
                 // TODO(canndrew): Can we support IGD on ipv6?
@@ -134,6 +137,7 @@ impl MappingContext {
             if addr.octets()[0] == 127 {
                 continue;
             };
+            let if_name = interface.name;
             search_threads.push(thread::Builder::new()
                                                 .name(From::from("IGD search"))
                                                 .spawn(move || {
@@ -163,6 +167,7 @@ impl MappingContext {
         }
         let mc = MappingContext {
             servers: RwLock::new(servers),
+            if_addrs: if_addrs,
         };
         WOk(mc, warnings)
     }
@@ -185,6 +190,10 @@ pub fn simple_servers(mc: &MappingContext) -> Vec<SocketAddr> {
         // TODO: handle port mapping
         _ => None,
     }).collect()
+}
+
+pub fn if_addrs(mc: &MappingContext) -> &[IpAddr] {
+    &mc.if_addrs[..]
 }
 
 #[cfg(test)]

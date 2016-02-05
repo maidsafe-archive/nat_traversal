@@ -20,9 +20,11 @@
 
 use std::io;
 use std::net::UdpSocket;
+use std::net;
 use std::time::Duration;
 
 use get_if_addrs;
+use ip::{SocketAddrExt, IpAddr};
 use maidsafe_utilities::serialisation::{deserialise, serialise};
 use socket_addr::SocketAddr;
 
@@ -32,6 +34,7 @@ use mapping_context;
 use mapping_context::MappingContext;
 use mapped_socket_addr::MappedSocketAddr;
 use periodic_sender::PeriodicSender;
+use socket_utils;
 
 // TODO(canndrew): This should return a Vec of SocketAddrs rather than a single SocketAddr. The Vec
 // should contain all known addresses of the socket.
@@ -91,19 +94,70 @@ pub struct MappedUdpSocket {
 impl MappedUdpSocket {
     /// Map an existing `UdpSocket`.
     pub fn map(socket: UdpSocket, mc: &MappingContext)
-               -> io::Result<MappedUdpSocket> {
+               -> io::Result<MappedUdpSocket>
+    {
+        let mut endpoints = Vec::new();
+
+        // Add the local addresses of this socket for the sake of peers on the name machine or
+        // same local network as us.
+        let local_addr = try!(socket.local_addr());
+        match SocketAddrExt::ip(&local_addr) {
+            IpAddr::V4(ipv4_addr) => {
+                if socket_utils::ipv4_is_unspecified(&ipv4_addr) {
+                    for iface_addr in mapping_context::if_addrs(mc) {
+                        match *iface_addr {
+                            IpAddr::V4(ipv4_addr) => {
+                                endpoints.push(MappedSocketAddr {
+                                    addr: net::SocketAddr::V4(net::SocketAddrV4::new(ipv4_addr, local_addr.port())),
+                                    nat_restricted: false,
+                                });
+                            }
+                            IpAddr::V6(_) => (),
+                        };
+                    };
+                }
+                else {
+                    endpoints.push(MappedSocketAddr {
+                        addr: net::SocketAddr::V4(net::SocketAddrV4::new(ipv4_addr, local_addr.port())),
+                        nat_restricted: false,
+                    });
+                }
+            },
+            IpAddr::V6(ipv6_addr) => {
+                if socket_utils::ipv6_is_unspecified(&ipv6_addr) {
+                    for iface_addr in mapping_context::if_addrs(mc) {
+                        match *iface_addr {
+                            IpAddr::V6(ipv6_addr) => {
+                                endpoints.push(MappedSocketAddr {
+                                    addr: net::SocketAddr::V6(net::SocketAddrV6::new(ipv6_addr, local_addr.port(), 0, 0)),
+                                    nat_restricted: false,
+                                });
+                            }
+                            IpAddr::V4(_) => (),
+                        };
+                    };
+                }
+                else {
+                    endpoints.push(MappedSocketAddr {
+                        addr: net::SocketAddr::V6(net::SocketAddrV6::new(ipv6_addr, local_addr.port(), 0, 0)),
+                        nat_restricted: false,
+                    });
+                }
+            },
+        };
+
+        // Try to find other endpoint addresses using hole punch servers.
+        // TODO(canndrew): parallelise this. Also we don't really want to contact *all* hole
+        // punching servers that we know of. We can be smarter than that.
         let servers = mapping_context::simple_servers(mc);
         external_udp_socket(socket, servers).map(|(socket, endpoints)| {
             MappedUdpSocket {
                 socket: socket,
-                endpoints: endpoints.into_iter().filter_map(|a| {
-                    Some(MappedSocketAddr {
-                        addr: match a.0 {
-                            ::std::net::SocketAddr::V4(a) => a,
-                            _ => return None,
-                        },
+                endpoints: endpoints.into_iter().map(|a| {
+                    MappedSocketAddr {
+                        addr: a.0,
                         nat_restricted: true,
-                    })
+                    }
                 }).collect()
             }
         })

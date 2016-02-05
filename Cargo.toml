@@ -24,4 +24,5 @@ socket_addr = "~0.0.1"
 sodiumoxide = "~0.0.9"
 time = "~0.1.34"
 w_result = "~0.1.0"
+ip = "~1.1.0"
 
