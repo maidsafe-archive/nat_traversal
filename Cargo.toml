@@ -25,4 +25,5 @@ sodiumoxide = "~0.0.9"
 time = "~0.1.34"
 w_result = "~0.1.1"
 ip = "~1.1.0"
+void = "0.0.5"
 

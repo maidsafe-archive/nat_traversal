@@ -51,6 +51,7 @@ extern crate rand;
 extern crate rustc_serialize;
 extern crate time;
 extern crate crossbeam;
+extern crate void;
 #[macro_use]
 extern crate maidsafe_utilities;
 extern crate igd;

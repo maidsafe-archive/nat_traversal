@@ -23,6 +23,7 @@ use std::net::UdpSocket;
 use std::net;
 use std::time::Duration;
 
+use igd;
 use time;
 use get_if_addrs;
 use ip::{SocketAddrExt, IpAddr};
@@ -107,37 +108,92 @@ impl MappedUdpSocket {
         match SocketAddrExt::ip(&local_addr) {
             IpAddr::V4(ipv4_addr) => {
                 if socket_utils::ipv4_is_unspecified(&ipv4_addr) {
-                    for iface_addr in mapping_context::if_addrs(mc) {
-                        match *iface_addr {
-                            IpAddr::V4(ipv4_addr) => {
-                                endpoints.push(MappedSocketAddr {
-                                    addr: SocketAddr(net::SocketAddr::V4(net::SocketAddrV4::new(ipv4_addr, local_addr.port()))),
-                                    nat_restricted: false,
-                                });
+                    // If the socket address is unspecified we add an address for every local
+                    // interface. We also ask the interface's IGD gateway (if there is one) for
+                    // an address.
+                    for iface_v4 in mapping_context::interfaces_v4(&mc) {
+                        let local_iface_addr = net::SocketAddrV4::new(iface_v4.addr, local_addr.port());
+                        endpoints.push(MappedSocketAddr {
+                            addr: SocketAddr(net::SocketAddr::V4(local_iface_addr)),
+                            nat_restricted: false,
+                        });
+                        if let Some(gateway) = iface_v4.gateway {
+                            match gateway.get_any_address(igd::PortMappingProtocol::UDP,
+                                                          local_iface_addr, 0,
+                                                          "rust nat_traversal")
+                            {
+                                Ok(external_addr) => {
+                                    endpoints.push(MappedSocketAddr {
+                                        addr: SocketAddr(net::SocketAddr::V4(external_addr)),
+                                        nat_restricted: false,
+                                    });
+                                },
+                                Err(_) => {
+                                    // TODO(canndrew): report this error
+                                }
                             }
-                            IpAddr::V6(_) => (),
                         };
                     };
                 }
                 else {
+                    let local_addr_v4 = net::SocketAddrV4::new(ipv4_addr, local_addr.port());
                     endpoints.push(MappedSocketAddr {
-                        addr: SocketAddr(net::SocketAddr::V4(net::SocketAddrV4::new(ipv4_addr, local_addr.port()))),
+                        addr: SocketAddr(net::SocketAddr::V4(local_addr_v4)),
                         nat_restricted: false,
                     });
-                }
+
+                    // If the local address is the address of an interface then we can avoid
+                    // searching for an IGD gateway, just reuse the search result from when we
+                    // found this interface.
+                    let mut gateway_opt_opt = None;
+                    for iface_v4 in mapping_context::interfaces_v4(&mc) {
+                        if iface_v4.addr == ipv4_addr {
+                            gateway_opt_opt = Some(iface_v4.gateway);
+                            break;
+                        }
+                    };
+                    let gateway_opt = match gateway_opt_opt {
+                        Some(gateway_opt) => gateway_opt,
+                        // We don't where this local address came from so search for an IGD gateway
+                        // at it.
+                        None => {
+                            match igd::search_gateway_from_timeout(ipv4_addr, Duration::from_secs(1)) {
+                                Ok(gateway) => Some(gateway),
+                                Err(_) => {
+                                    // TODO(canndrew): report this error
+                                    None
+                                }
+                            }
+                        }
+                    };
+                    // If we have a gateway, ask it for an external address.
+                    if let Some(gateway) = gateway_opt {
+                        match gateway.get_any_address(igd::PortMappingProtocol::UDP,
+                                                      local_addr_v4, 0,
+                                                      "rust nat_traversal")
+                        {
+                            Ok(external_addr) => {
+                                endpoints.push(MappedSocketAddr {
+                                    addr: SocketAddr(net::SocketAddr::V4(external_addr)),
+                                    nat_restricted: false,
+                                });
+                            },
+                            Err(_) => {
+                                // TODO(canndrew): report this error
+                            }
+                        }
+                    };
+                };
             },
             IpAddr::V6(ipv6_addr) => {
                 if socket_utils::ipv6_is_unspecified(&ipv6_addr) {
-                    for iface_addr in mapping_context::if_addrs(mc) {
-                        match *iface_addr {
-                            IpAddr::V6(ipv6_addr) => {
-                                endpoints.push(MappedSocketAddr {
-                                    addr: SocketAddr(net::SocketAddr::V6(net::SocketAddrV6::new(ipv6_addr, local_addr.port(), 0, 0))),
-                                    nat_restricted: false,
-                                });
-                            }
-                            IpAddr::V4(_) => (),
-                        };
+                    // If the socket address is unspecified add an address for every interface.
+                    for iface_v6 in mapping_context::interfaces_v6(&mc) {
+                        let local_iface_addr = net::SocketAddr::V6(net::SocketAddrV6::new(iface_v6.addr, local_addr.port(), 0, 0));
+                        endpoints.push(MappedSocketAddr {
+                            addr: SocketAddr(local_iface_addr),
+                            nat_restricted: false,
+                        });
                     };
                 }
                 else {
