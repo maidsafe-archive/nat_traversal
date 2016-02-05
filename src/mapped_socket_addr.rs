@@ -18,9 +18,10 @@
 //! # `nat_traversal`
 //! NAT traversal utilities.
 
-use std::net::SocketAddr;
+use socket_addr::SocketAddr;
 
 /// A socket address obtained through some mapping technique.
+#[derive(RustcEncodable, RustcDecodable)]
 pub struct MappedSocketAddr {
     /// The mapped address
     pub addr: SocketAddr,
@@ -30,3 +31,4 @@ pub struct MappedSocketAddr {
     /// external address of a full-cone NAT or one obtained through UPnP.
     pub nat_restricted: bool,
 }
+

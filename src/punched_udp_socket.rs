@@ -155,7 +155,7 @@ impl PunchedUdpSocket {
             = rendezvous_info::get_priv_secret(our_priv_rendezvous_info);
 
         for endpoint in endpoints {
-            let addr = SocketAddr(endpoint.addr);
+            let addr = endpoint.addr;
             let (s, r) = blocking_udp_punch_hole(socket, our_secret.clone(),
                                                  their_secret.clone(), addr);
             socket = s;

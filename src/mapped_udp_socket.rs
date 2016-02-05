@@ -108,7 +108,7 @@ impl MappedUdpSocket {
                         match *iface_addr {
                             IpAddr::V4(ipv4_addr) => {
                                 endpoints.push(MappedSocketAddr {
-                                    addr: net::SocketAddr::V4(net::SocketAddrV4::new(ipv4_addr, local_addr.port())),
+                                    addr: SocketAddr(net::SocketAddr::V4(net::SocketAddrV4::new(ipv4_addr, local_addr.port()))),
                                     nat_restricted: false,
                                 });
                             }
@@ -118,7 +118,7 @@ impl MappedUdpSocket {
                 }
                 else {
                     endpoints.push(MappedSocketAddr {
-                        addr: net::SocketAddr::V4(net::SocketAddrV4::new(ipv4_addr, local_addr.port())),
+                        addr: SocketAddr(net::SocketAddr::V4(net::SocketAddrV4::new(ipv4_addr, local_addr.port()))),
                         nat_restricted: false,
                     });
                 }
@@ -129,7 +129,7 @@ impl MappedUdpSocket {
                         match *iface_addr {
                             IpAddr::V6(ipv6_addr) => {
                                 endpoints.push(MappedSocketAddr {
-                                    addr: net::SocketAddr::V6(net::SocketAddrV6::new(ipv6_addr, local_addr.port(), 0, 0)),
+                                    addr: SocketAddr(net::SocketAddr::V6(net::SocketAddrV6::new(ipv6_addr, local_addr.port(), 0, 0))),
                                     nat_restricted: false,
                                 });
                             }
@@ -139,7 +139,7 @@ impl MappedUdpSocket {
                 }
                 else {
                     endpoints.push(MappedSocketAddr {
-                        addr: net::SocketAddr::V6(net::SocketAddrV6::new(ipv6_addr, local_addr.port(), 0, 0)),
+                        addr: SocketAddr(net::SocketAddr::V6(net::SocketAddrV6::new(ipv6_addr, local_addr.port(), 0, 0))),
                         nat_restricted: false,
                     });
                 }
@@ -155,7 +155,7 @@ impl MappedUdpSocket {
                 socket: socket,
                 endpoints: endpoints.into_iter().map(|a| {
                     MappedSocketAddr {
-                        addr: a.0,
+                        addr: a,
                         nat_restricted: true,
                     }
                 }).collect()
