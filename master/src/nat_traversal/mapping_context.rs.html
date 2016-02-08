@@ -248,36 +248,6 @@
 <span id="205">205</span>
 <span id="206">206</span>
 <span id="207">207</span>
-<span id="208">208</span>
-<span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
-<span id="236">236</span>
-<span id="237">237</span>
 </pre><pre class='rust '>
 <span class='comment'>// Copyright 2016 MaidSafe.net limited.</span>
 <span class='comment'>//</span>
@@ -338,73 +308,39 @@
     <span class='kw'>pub</span> <span class='ident'>addr</span>: <span class='ident'>Ipv6Addr</span>,
 }
 
-<span class='doccomment'>/// Errors that can occur when trying to create a `MappingContext`.</span>
-<span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Debug</span>)]</span>
-<span class='kw'>pub</span> <span class='kw'>enum</span> <span class='ident'>MappingContextNewError</span> {
-    <span class='doccomment'>/// Failed to list the local machine&#39;s network interfaces.</span>
-    <span class='ident'>ListInterfaces</span>(<span class='ident'>io</span>::<span class='ident'>Error</span>),
-    <span class='doccomment'>/// Failed to spawn a thread.</span>
-    <span class='ident'>SpawnThread</span>(<span class='ident'>io</span>::<span class='ident'>Error</span>),
-}
-
-<span class='kw'>impl</span> <span class='ident'>fmt</span>::<span class='ident'>Display</span> <span class='kw'>for</span> <span class='ident'>MappingContextNewError</span> {
-    <span class='kw'>fn</span> <span class='ident'>fmt</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>f</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>fmt</span>::<span class='ident'>Formatter</span>) <span class='op'>-&gt;</span> <span class='ident'>fmt</span>::<span class='prelude-ty'>Result</span> {
-        <span class='kw'>use</span> <span class='self'>self</span>::<span class='ident'>MappingContextNewError</span>::<span class='op'>*</span>;
-        <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
-            <span class='ident'>ListInterfaces</span>(<span class='kw-2'>ref</span> <span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>, <span class='string'>&quot;Failed to list the local machine&#39;s network \
-                                                interfaces. get_if_addrs::get_if_addrs returned \
-                                                an error: {}&quot;</span>, <span class='ident'>e</span>),
-            <span class='ident'>SpawnThread</span>(<span class='kw-2'>ref</span> <span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>, <span class='string'>&quot;Failed to spawn a thread. thread::spawn returned an \
-                                             error: {}&quot;</span>, <span class='ident'>e</span>),
+<span class='macro'>quick_error</span><span class='macro'>!</span> {
+    <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Debug</span>)]</span>
+    <span class='kw'>pub</span> <span class='kw'>enum</span> <span class='ident'>MappingContextNewError</span> {
+        <span class='doccomment'>/// Failed to list the local machine&#39;s network interfaces.</span>
+        <span class='ident'>ListInterfaces</span> { <span class='ident'>err</span>:<span class='ident'>io</span>::<span class='ident'>Error</span> } {
+            <span class='ident'>description</span>(<span class='string'>&quot;Failed to list the local machine&#39;s network interfaces&quot;</span>)
+            <span class='ident'>display</span>(<span class='string'>&quot;Failed to list the local machines&#39;s network interfaces \
+                     get_if_addrs returned an error: {}&quot;</span>, <span class='ident'>err</span>)
+            <span class='ident'>cause</span>(<span class='ident'>err</span>)
+        }
+        <span class='doccomment'>/// Failed to spawn a thread.</span>
+        <span class='ident'>SpawnThread</span> { <span class='ident'>err</span>: <span class='ident'>io</span>::<span class='ident'>Error</span> } {
+            <span class='ident'>description</span>(<span class='string'>&quot;Failed to spawn a thread&quot;</span>)
+            <span class='ident'>display</span>(<span class='string'>&quot;Failed to spawn a thread. \
+                     thread::spawn returned an error: {}&quot;</span>, <span class='ident'>err</span>)
+            <span class='ident'>cause</span>(<span class='ident'>err</span>)
         }
     }
 }
 
-<span class='kw'>impl</span> <span class='ident'>std</span>::<span class='ident'>error</span>::<span class='ident'>Error</span> <span class='kw'>for</span> <span class='ident'>MappingContextNewError</span> {
-    <span class='kw'>fn</span> <span class='ident'>cause</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='ident'>std</span>::<span class='ident'>error</span>::<span class='ident'>Error</span><span class='op'>&gt;</span> {
-        <span class='kw'>use</span> <span class='self'>self</span>::<span class='ident'>MappingContextNewError</span>::<span class='op'>*</span>;
-        <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
-            <span class='ident'>ListInterfaces</span>(<span class='kw-2'>ref</span> <span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='prelude-val'>Some</span>(<span class='ident'>e</span>),
-            <span class='ident'>SpawnThread</span>(<span class='kw-2'>ref</span> <span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='prelude-val'>Some</span>(<span class='ident'>e</span>),
-        }
-    }
-
-    <span class='kw'>fn</span> <span class='ident'>description</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>str</span> {
-        <span class='kw'>use</span> <span class='self'>self</span>::<span class='ident'>MappingContextNewError</span>::<span class='op'>*</span>;
-        <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
-            <span class='ident'>ListInterfaces</span>(_) <span class='op'>=&gt;</span> <span class='string'>&quot;Failed to list the local machine&#39;s network interfaces&quot;</span>,
-            <span class='ident'>SpawnThread</span>(_) <span class='op'>=&gt;</span> <span class='string'>&quot;Failed to spawn a thread&quot;</span>,
-        }
-    }
-}
-
-<span class='doccomment'>/// Warnings that can be raised by </span>
-<span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Debug</span>)]</span>
-<span class='kw'>pub</span> <span class='kw'>enum</span> <span class='ident'>MappingContextNewWarning</span> {
-    <span class='ident'>SearchGateway</span>(<span class='ident'>String</span>, <span class='ident'>Ipv4Addr</span>, <span class='ident'>igd</span>::<span class='ident'>SearchError</span>),
-}
-
-<span class='kw'>impl</span> <span class='ident'>fmt</span>::<span class='ident'>Display</span> <span class='kw'>for</span> <span class='ident'>MappingContextNewWarning</span> {
-    <span class='kw'>fn</span> <span class='ident'>fmt</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>f</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>fmt</span>::<span class='ident'>Formatter</span>) <span class='op'>-&gt;</span> <span class='ident'>fmt</span>::<span class='prelude-ty'>Result</span> {
-        <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
-            <span class='ident'>MappingContextNewWarning</span>::<span class='ident'>SearchGateway</span>(<span class='kw-2'>ref</span> <span class='ident'>if_name</span>, <span class='kw-2'>ref</span> <span class='ident'>if_addr</span>, <span class='kw-2'>ref</span> <span class='ident'>e</span>)
-                <span class='op'>=&gt;</span> <span class='macro'>write</span><span class='macro'>!</span>(<span class='ident'>f</span>, <span class='string'>&quot;Failed to find an IGD gateway on network interface {} {}. \
-                              igd::search_gateway_from_timeout returned an error: {}&quot;</span>,
-                              <span class='ident'>if_name</span>, <span class='ident'>if_addr</span>, <span class='ident'>e</span>),
-        }
-    }
-}
-
-<span class='kw'>impl</span> <span class='ident'>std</span>::<span class='ident'>error</span>::<span class='ident'>Error</span> <span class='kw'>for</span> <span class='ident'>MappingContextNewWarning</span> {
-    <span class='kw'>fn</span> <span class='ident'>cause</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='ident'>std</span>::<span class='ident'>error</span>::<span class='ident'>Error</span><span class='op'>&gt;</span> {
-        <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
-            <span class='ident'>MappingContextNewWarning</span>::<span class='ident'>SearchGateway</span>(_, _, <span class='kw-2'>ref</span> <span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='prelude-val'>Some</span>(<span class='ident'>e</span>),
-        }
-    }
-
-    <span class='kw'>fn</span> <span class='ident'>description</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>str</span> {
-        <span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
-            <span class='ident'>MappingContextNewWarning</span>::<span class='ident'>SearchGateway</span>(_, _, <span class='kw-2'>ref</span> <span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='string'>&quot;Failed to find IGD gateway.&quot;</span>
+<span class='macro'>quick_error</span><span class='macro'>!</span> {
+    <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Debug</span>)]</span>
+    <span class='kw'>pub</span> <span class='kw'>enum</span> <span class='ident'>MappingContextNewWarning</span> {
+        <span class='ident'>SearchGateway</span> {
+            <span class='ident'>if_name</span>: <span class='ident'>String</span>,
+            <span class='ident'>if_addr</span>: <span class='ident'>Ipv4Addr</span>,
+            <span class='ident'>err</span>: <span class='ident'>igd</span>::<span class='ident'>SearchError</span>
+        } {
+            <span class='ident'>description</span>(<span class='string'>&quot;Failed to find IGD gateway&quot;</span>)
+            <span class='ident'>display</span>(<span class='string'>&quot;Failed to find an IGD gateway on network interface {} {}. \
+                     igd::search_gateway_from_timeout returned an error: {}&quot;</span>,
+                     <span class='ident'>if_name</span>, <span class='ident'>if_addr</span>, <span class='ident'>err</span>)
+            <span class='ident'>cause</span>(<span class='ident'>err</span>)
         }
     }
 }
@@ -415,7 +351,7 @@
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span>() <span class='op'>-&gt;</span> <span class='ident'>WResult</span><span class='op'>&lt;</span><span class='ident'>MappingContext</span>, <span class='ident'>MappingContextNewWarning</span>, <span class='ident'>MappingContextNewError</span><span class='op'>&gt;</span> {
         <span class='kw'>let</span> <span class='ident'>interfaces</span> <span class='op'>=</span> <span class='kw'>match</span> <span class='ident'>get_if_addrs</span>::<span class='ident'>get_if_addrs</span>() {
             <span class='prelude-val'>Ok</span>(<span class='ident'>if_addrs</span>) <span class='op'>=&gt;</span> <span class='ident'>if_addrs</span>,
-            <span class='prelude-val'>Err</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='ident'>WErr</span>(<span class='ident'>MappingContextNewError</span>::<span class='ident'>ListInterfaces</span>(<span class='ident'>e</span>)),
+            <span class='prelude-val'>Err</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='ident'>WErr</span>(<span class='ident'>MappingContextNewError</span>::<span class='ident'>ListInterfaces</span> { <span class='ident'>err</span>: <span class='ident'>e</span> }),
         };
         <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>interfaces_v4</span> <span class='op'>=</span> <span class='ident'>Vec</span>::<span class='ident'>new</span>();
         <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>interfaces_v6</span> <span class='op'>=</span> <span class='ident'>Vec</span>::<span class='ident'>new</span>();
@@ -450,7 +386,11 @@
                 <span class='kw'>let</span> <span class='ident'>gateway</span> <span class='op'>=</span> <span class='kw'>match</span> <span class='ident'>igd</span>::<span class='ident'>search_gateway_from_timeout</span>(<span class='ident'>addr_v4</span>, <span class='ident'>Duration</span>::<span class='ident'>from_secs</span>(<span class='number'>1</span>)) {
                     <span class='prelude-val'>Ok</span>(<span class='ident'>gateway</span>) <span class='op'>=&gt;</span> <span class='prelude-val'>Some</span>(<span class='ident'>gateway</span>),
                     <span class='prelude-val'>Err</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> {
-                        <span class='ident'>warnings</span>.<span class='ident'>push</span>(<span class='ident'>MappingContextNewWarning</span>::<span class='ident'>SearchGateway</span>(<span class='ident'>if_name</span>, <span class='ident'>addr_v4</span>, <span class='ident'>e</span>));
+                        <span class='ident'>warnings</span>.<span class='ident'>push</span>(<span class='ident'>MappingContextNewWarning</span>::<span class='ident'>SearchGateway</span> {
+                            <span class='ident'>if_name</span>: <span class='ident'>if_name</span>,
+                            <span class='ident'>if_addr</span>: <span class='ident'>addr_v4</span>,
+                            <span class='ident'>err</span>: <span class='ident'>e</span>,
+                        });
                         <span class='prelude-val'>None</span>
                     },
                 };
@@ -463,7 +403,7 @@
 
         <span class='kw'>for</span> <span class='ident'>search_thread</span> <span class='kw'>in</span> <span class='ident'>search_threads</span> {
             <span class='kw'>match</span> <span class='ident'>search_thread</span> {
-                <span class='prelude-val'>Err</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='ident'>WErr</span>(<span class='ident'>MappingContextNewError</span>::<span class='ident'>SpawnThread</span>(<span class='ident'>e</span>)),
+                <span class='prelude-val'>Err</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='ident'>WErr</span>(<span class='ident'>MappingContextNewError</span>::<span class='ident'>SpawnThread</span> { <span class='ident'>err</span>: <span class='ident'>e</span> }),
                 <span class='prelude-val'>Ok</span>(<span class='ident'>jh</span>) <span class='op'>=&gt;</span> {
                     <span class='comment'>// If the child thread panicked, propogate the panic.</span>
                     <span class='kw'>let</span> <span class='ident'>res</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>jh</span>.<span class='ident'>join</span>());
