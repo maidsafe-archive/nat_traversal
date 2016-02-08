@@ -137,9 +137,9 @@ fn blocking_udp_punch_hole(udp_socket: UdpSocket,
 
 /// A udp socket that has been hole punched.
 pub struct PunchedUdpSocket {
-    /// TODO: document!
+    /// The UDP socket.
     pub socket: UdpSocket,
-    /// TODO: document!
+    /// The remote address that this socket is able to send messages to and receive messages from.
     pub peer_addr: SocketAddr,
 }
 
@@ -155,10 +155,7 @@ impl PunchedUdpSocket {
             = rendezvous_info::get_priv_secret(our_priv_rendezvous_info);
 
         for endpoint in endpoints {
-            let addr = {
-                use std::net::SocketAddr as SA;
-                SocketAddr(SA::V4(endpoint.addr))
-            };
+            let addr = endpoint.addr;
             let (s, r) = blocking_udp_punch_hole(socket, our_secret.clone(),
                                                  their_secret.clone(), addr);
             socket = s;
@@ -173,3 +170,69 @@ impl PunchedUdpSocket {
                            "Timed out waiting for rendevous connection"))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::Duration;
+    use rand;
+
+    use mapping_context::MappingContext;
+    use mapped_udp_socket::MappedUdpSocket;
+    use punched_udp_socket::PunchedUdpSocket;
+    use rendezvous_info::gen_rendezvous_info;
+
+    fn two_peers_punch_hole_over_loopback() {
+        let mapping_context = unwrap_result!(MappingContext::new().result_discard());
+        let mapped_socket_0 = unwrap_result!(MappedUdpSocket::new(&mapping_context));
+        let mapped_socket_1 = unwrap_result!(MappedUdpSocket::new(&mapping_context));
+
+        let socket_0 = mapped_socket_0.socket;
+        let socket_1 = mapped_socket_1.socket;
+        let (priv_info_0, pub_info_0) = gen_rendezvous_info(mapped_socket_0.endpoints);
+        let (priv_info_1, pub_info_1) = gen_rendezvous_info(mapped_socket_1.endpoints);
+
+        let (tx_0, rx_0) = mpsc::channel();
+        let (tx_1, rx_1) = mpsc::channel();
+
+        let jh_0 = thread!("two_peers_hole_punch_over_loopback punch socket 0", move || {
+            let res = PunchedUdpSocket::punch_hole(socket_0,
+                                                   priv_info_0,
+                                                   pub_info_1);
+            tx_0.send(res);
+        });
+        let jh_1 = thread!("two_peers_hole_punch_over_loopback punch socket 1", move || {
+            let res = PunchedUdpSocket::punch_hole(socket_1,
+                                                   priv_info_1,
+                                                   pub_info_0);
+            tx_1.send(res);
+        });
+
+        thread::sleep(Duration::from_millis(500));
+        let punched_socket_0 = unwrap_result!(unwrap_result!(rx_0.try_recv()));
+        let punched_socket_1 = unwrap_result!(unwrap_result!(rx_1.try_recv()));
+
+        const DATA_LEN: usize = 8;
+        let data_send: [u8; DATA_LEN] = rand::random();
+        let mut data_recv;
+        
+        // Send data from 0 to 1
+        data_recv = [0u8; DATA_LEN];
+        punched_socket_0.socket.send_to(&data_send[..], &*punched_socket_0.peer_addr);
+        let (n, _) = unwrap_result!(punched_socket_1.socket.recv_from(&mut data_recv[..]));
+        assert_eq!(n, DATA_LEN);
+        assert_eq!(data_send, data_recv);
+
+        // Send data from 1 to 0
+        data_recv = [0u8; DATA_LEN];
+        punched_socket_1.socket.send_to(&data_send[..], &*punched_socket_1.peer_addr);
+        let (n, _) = unwrap_result!(punched_socket_0.socket.recv_from(&mut data_recv[..]));
+        assert_eq!(n, DATA_LEN);
+        assert_eq!(data_send, data_recv);
+
+        unwrap_result!(jh_0.join());
+        unwrap_result!(jh_1.join());
+    }
+}
+

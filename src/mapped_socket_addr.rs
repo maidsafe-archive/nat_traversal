@@ -18,15 +18,17 @@
 //! # `nat_traversal`
 //! NAT traversal utilities.
 
-use std::net::SocketAddrV4;
+use socket_addr::SocketAddr;
 
 /// A socket address obtained through some mapping technique.
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct MappedSocketAddr {
     /// The mapped address
-    pub addr: SocketAddrV4,
+    pub addr: SocketAddr,
 
     /// Indicated that hole punching needs to be used for an external client to connect to this
     /// address. `nat_restricted` will not be set if this is a fully mapped address such as the
     /// external address of a full-cone NAT or one obtained through UPnP.
     pub nat_restricted: bool,
 }
+

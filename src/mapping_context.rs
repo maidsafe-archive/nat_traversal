@@ -21,15 +21,17 @@
 use std::sync::RwLock;
 use std::io;
 use std::fmt;
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, Ipv6Addr};
 use std;
 use std::thread;
 use std::time::Duration;
 
+use ip::IpAddr;
 use igd;
 use socket_addr::SocketAddr;
-use w_result::WResult::{self, WOk, WErr};
+use w_result::{WResult, WOk, WErr};
 use get_if_addrs;
+use void::Void;
 
 use hole_punch_server_addr::HolePunchServerAddr;
 
@@ -38,7 +40,21 @@ use hole_punch_server_addr::HolePunchServerAddr;
 /// program. Internally it caches a addresses of UPnP servers and hole punching
 /// servers.
 pub struct MappingContext {
-    servers: RwLock<Vec<HolePunchServerAddr>>,
+    interfaces_v4: RwLock<Vec<InterfaceV4>>,
+    interfaces_v6: RwLock<Vec<InterfaceV6>>,
+    simple_servers: RwLock<Vec<SocketAddr>>,
+}
+
+#[derive(Clone)]
+pub struct InterfaceV4 {
+    pub gateway: Option<igd::Gateway>,
+    pub addr: Ipv4Addr,
+}
+
+// TODO(canndrew): Can we support IGD on ipv6?
+#[derive(Clone)]
+pub struct InterfaceV6 {
+    pub addr: Ipv6Addr,
 }
 
 /// Errors that can occur when trying to create a `MappingContext`.
@@ -120,30 +136,50 @@ impl MappingContext {
             Ok(if_addrs) => if_addrs,
             Err(e) => return WErr(MappingContextNewError::ListInterfaces(e)),
         };
+        let mut interfaces_v4 = Vec::new();
+        let mut interfaces_v6 = Vec::new();
         let mut warnings = Vec::new();
         let mut search_threads = Vec::new();
         for interface in interfaces {
-            let if_name = interface.name;
-            let addr = match interface.addr {
-                get_if_addrs::IfAddr::V4(v4_addr) => v4_addr.ip,
-                // TODO(canndrew): Can we support IGD on ipv6?
-                get_if_addrs::IfAddr::V6(_) => continue,
+            let addr_v4 = match interface.addr {
+                get_if_addrs::IfAddr::V4(v4_addr) => {
+                    v4_addr.ip
+                },
+                get_if_addrs::IfAddr::V6(v6_addr) => {
+                    interfaces_v6.push(InterfaceV6 {
+                        addr: v6_addr.ip,
+                    });
+                    continue;
+                },
             };
             // TODO(canndrew): use is_loopback when it's stable
             //if addr.is_loopback() {
-            if addr.octets()[0] == 127 {
+            if addr_v4.octets()[0] == 127 {
+                interfaces_v4.push(InterfaceV4 {
+                    gateway: None,
+                    addr: addr_v4,
+                });
                 continue;
             };
+            let if_name = interface.name;
             search_threads.push(thread::Builder::new()
                                                 .name(From::from("IGD search"))
-                                                .spawn(move || {
-                match igd::search_gateway_from_timeout(addr, Duration::from_secs(1)) {
-                    Ok(gateway) => Ok(gateway),
-                    Err(e) => Err(MappingContextNewWarning::SearchGateway(if_name, addr, e)),
-                }
+                                                .spawn(move || -> WResult<_, _, Void> {
+                let mut warnings = Vec::new();
+                let gateway = match igd::search_gateway_from_timeout(addr_v4, Duration::from_secs(1)) {
+                    Ok(gateway) => Some(gateway),
+                    Err(e) => {
+                        warnings.push(MappingContextNewWarning::SearchGateway(if_name, addr_v4, e));
+                        None
+                    },
+                };
+                WOk(InterfaceV4 {
+                    gateway: gateway,
+                    addr: addr_v4,
+                }, warnings)
             }));
         };
-        let mut servers = Vec::new();
+
         for search_thread in search_threads {
             match search_thread {
                 Err(e) => return WErr(MappingContextNewError::SpawnThread(e)),
@@ -151,40 +187,42 @@ impl MappingContext {
                     // If the child thread panicked, propogate the panic.
                     let res = unwrap_result!(jh.join());
                     match res {
-                        Err(e) => {
-                            warnings.push(e);
-                        }
-                        Ok(gateway) => {
-                            servers.push(HolePunchServerAddr::IgdGateway(gateway));
+                        WErr(e) => match e {},
+                        WOk(interface, ws) => {
+                            interfaces_v4.push(interface);
+                            warnings.extend(ws);
                         }
                     }
                 }
             }
         }
         let mc = MappingContext {
-            servers: RwLock::new(servers),
+            simple_servers: RwLock::new(Vec::new()),
+            interfaces_v4: RwLock::new(interfaces_v4),
+            interfaces_v6: RwLock::new(interfaces_v6),
         };
         WOk(mc, warnings)
     }
 
-    /// Inform the context about external hole punching servers.
-    pub fn add_servers<S>(&self, servers: S)
-        where S: IntoIterator<Item=HolePunchServerAddr>
+    /// Inform the context about external servers that speak the simple hole punch server protocol.
+    pub fn add_simple_servers<S>(&self, servers: S)
+        where S: IntoIterator<Item=SocketAddr>
     {
-        let mut s = unwrap_result!(self.servers.write());
+        let mut s = unwrap_result!(self.simple_servers.write());
         s.extend(servers)
     }
 }
 
+pub fn interfaces_v4(mc: &MappingContext) -> Vec<InterfaceV4> {
+    unwrap_result!(mc.interfaces_v4.read()).clone()
+}
+
+pub fn interfaces_v6(mc: &MappingContext) -> Vec<InterfaceV6> {
+    unwrap_result!(mc.interfaces_v6.read()).clone()
+}
+
 pub fn simple_servers(mc: &MappingContext) -> Vec<SocketAddr> {
-    unwrap_result!(mc.servers.read()).iter().filter_map(|s| match *s {
-        HolePunchServerAddr::Simple(a) => {
-            use std::net::SocketAddr as SA;
-            Some(SocketAddr(SA::V4(a)))
-        }
-        // TODO: handle port mapping
-        _ => None,
-    }).collect()
+    unwrap_result!(mc.simple_servers.read()).clone()
 }
 
 #[cfg(test)]

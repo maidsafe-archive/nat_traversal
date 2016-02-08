@@ -51,6 +51,7 @@ extern crate rand;
 extern crate rustc_serialize;
 extern crate time;
 extern crate crossbeam;
+extern crate void;
 #[macro_use]
 extern crate maidsafe_utilities;
 extern crate igd;
@@ -59,6 +60,7 @@ extern crate get_if_addrs;
 extern crate sodiumoxide;
 extern crate libc;
 extern crate w_result;
+extern crate ip;
 
 pub use mapping_context::MappingContext;
 pub use hole_punch_server_addr::HolePunchServerAddr;
