@@ -57,73 +57,39 @@ pub struct InterfaceV6 {
     pub addr: Ipv6Addr,
 }
 
-/// Errors that can occur when trying to create a `MappingContext`.
-#[derive(Debug)]
-pub enum MappingContextNewError {
-    /// Failed to list the local machine's network interfaces.
-    ListInterfaces(io::Error),
-    /// Failed to spawn a thread.
-    SpawnThread(io::Error),
-}
-
-impl fmt::Display for MappingContextNewError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::MappingContextNewError::*;
-        match *self {
-            ListInterfaces(ref e) => write!(f, "Failed to list the local machine's network \
-                                                interfaces. get_if_addrs::get_if_addrs returned \
-                                                an error: {}", e),
-            SpawnThread(ref e) => write!(f, "Failed to spawn a thread. thread::spawn returned an \
-                                             error: {}", e),
+quick_error! {
+    #[derive(Debug)]
+    pub enum MappingContextNewError {
+        /// Failed to list the local machine's network interfaces.
+        ListInterfaces { err:io::Error } {
+            description("Failed to list the local machine's network interfaces")
+            display("Failed to list the local machines's network interfaces \
+                     get_if_addrs returned an error: {}", err)
+            cause(err)
+        }
+        /// Failed to spawn a thread.
+        SpawnThread { err: io::Error } {
+            description("Failed to spawn a thread")
+            display("Failed to spawn a thread. \
+                     thread::spawn returned an error: {}", err)
+            cause(err)
         }
     }
 }
 
-impl std::error::Error for MappingContextNewError {
-    fn cause(&self) -> Option<&std::error::Error> {
-        use self::MappingContextNewError::*;
-        match *self {
-            ListInterfaces(ref e) => Some(e),
-            SpawnThread(ref e) => Some(e),
-        }
-    }
-
-    fn description(&self) -> &str {
-        use self::MappingContextNewError::*;
-        match *self {
-            ListInterfaces(_) => "Failed to list the local machine's network interfaces",
-            SpawnThread(_) => "Failed to spawn a thread",
-        }
-    }
-}
-
-/// Warnings that can be raised by 
-#[derive(Debug)]
-pub enum MappingContextNewWarning {
-    SearchGateway(String, Ipv4Addr, igd::SearchError),
-}
-
-impl fmt::Display for MappingContextNewWarning {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            MappingContextNewWarning::SearchGateway(ref if_name, ref if_addr, ref e)
-                => write!(f, "Failed to find an IGD gateway on network interface {} {}. \
-                              igd::search_gateway_from_timeout returned an error: {}",
-                              if_name, if_addr, e),
-        }
-    }
-}
-
-impl std::error::Error for MappingContextNewWarning {
-    fn cause(&self) -> Option<&std::error::Error> {
-        match *self {
-            MappingContextNewWarning::SearchGateway(_, _, ref e) => Some(e),
-        }
-    }
-
-    fn description(&self) -> &str {
-        match *self {
-            MappingContextNewWarning::SearchGateway(_, _, ref e) => "Failed to find IGD gateway."
+quick_error! {
+    #[derive(Debug)]
+    pub enum MappingContextNewWarning {
+        SearchGateway {
+            if_name: String,
+            if_addr: Ipv4Addr,
+            err: igd::SearchError
+        } {
+            description("Failed to find IGD gateway")
+            display("Failed to find an IGD gateway on network interface {} {}. \
+                     igd::search_gateway_from_timeout returned an error: {}",
+                     if_name, if_addr, err)
+            cause(err)
         }
     }
 }
@@ -134,7 +100,7 @@ impl MappingContext {
     pub fn new() -> WResult<MappingContext, MappingContextNewWarning, MappingContextNewError> {
         let interfaces = match get_if_addrs::get_if_addrs() {
             Ok(if_addrs) => if_addrs,
-            Err(e) => return WErr(MappingContextNewError::ListInterfaces(e)),
+            Err(e) => return WErr(MappingContextNewError::ListInterfaces { err: e }),
         };
         let mut interfaces_v4 = Vec::new();
         let mut interfaces_v6 = Vec::new();
@@ -169,7 +135,11 @@ impl MappingContext {
                 let gateway = match igd::search_gateway_from_timeout(addr_v4, Duration::from_secs(1)) {
                     Ok(gateway) => Some(gateway),
                     Err(e) => {
-                        warnings.push(MappingContextNewWarning::SearchGateway(if_name, addr_v4, e));
+                        warnings.push(MappingContextNewWarning::SearchGateway {
+                            if_name: if_name,
+                            if_addr: addr_v4,
+                            err: e,
+                        });
                         None
                     },
                 };
@@ -182,7 +152,7 @@ impl MappingContext {
 
         for search_thread in search_threads {
             match search_thread {
-                Err(e) => return WErr(MappingContextNewError::SpawnThread(e)),
+                Err(e) => return WErr(MappingContextNewError::SpawnThread { err: e }),
                 Ok(jh) => {
                     // If the child thread panicked, propogate the panic.
                     let res = unwrap_result!(jh.join());

@@ -27,8 +27,13 @@ fn main() {
 
     // Now we use our context to create a mapped udp socket.
     let mapped_socket = match MappedUdpSocket::new(&mapping_context) {
-        Ok(mapped_socket) => mapped_socket,
-        Err(e) => {
+        WOk(mapped_socket, warnings) => {
+            for warning in warnings {
+                println!("Warning when mapping socket: {}", warning);
+            }
+            mapped_socket
+        },
+        WErr(e) => {
             println!("IO error mapping socket: {}", e);
             println!("Exiting.");
             return;
