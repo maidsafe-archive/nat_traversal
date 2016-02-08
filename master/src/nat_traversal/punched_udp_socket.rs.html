@@ -216,6 +216,69 @@
 <span id="173">173</span>
 <span id="174">174</span>
 <span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
 </pre><pre class='rust '>
 <span class='comment'>// Copyright 2016 MaidSafe.net limited.</span>
 <span class='comment'>//</span>
@@ -356,9 +419,9 @@
 
 <span class='doccomment'>/// A udp socket that has been hole punched.</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>PunchedUdpSocket</span> {
-    <span class='doccomment'>/// TODO: document!</span>
+    <span class='doccomment'>/// The UDP socket.</span>
     <span class='kw'>pub</span> <span class='ident'>socket</span>: <span class='ident'>UdpSocket</span>,
-    <span class='doccomment'>/// TODO: document!</span>
+    <span class='doccomment'>/// The remote address that this socket is able to send messages to and receive messages from.</span>
     <span class='kw'>pub</span> <span class='ident'>peer_addr</span>: <span class='ident'>SocketAddr</span>,
 }
 
@@ -374,10 +437,7 @@
             <span class='op'>=</span> <span class='ident'>rendezvous_info</span>::<span class='ident'>get_priv_secret</span>(<span class='ident'>our_priv_rendezvous_info</span>);
 
         <span class='kw'>for</span> <span class='ident'>endpoint</span> <span class='kw'>in</span> <span class='ident'>endpoints</span> {
-            <span class='kw'>let</span> <span class='ident'>addr</span> <span class='op'>=</span> {
-                <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>net</span>::<span class='ident'>SocketAddr</span> <span class='kw'>as</span> <span class='ident'>SA</span>;
-                <span class='ident'>SocketAddr</span>(<span class='ident'>SA</span>::<span class='ident'>V4</span>(<span class='ident'>endpoint</span>.<span class='ident'>addr</span>))
-            };
+            <span class='kw'>let</span> <span class='ident'>addr</span> <span class='op'>=</span> <span class='ident'>endpoint</span>.<span class='ident'>addr</span>;
             <span class='kw'>let</span> (<span class='ident'>s</span>, <span class='ident'>r</span>) <span class='op'>=</span> <span class='ident'>blocking_udp_punch_hole</span>(<span class='ident'>socket</span>, <span class='ident'>our_secret</span>.<span class='ident'>clone</span>(),
                                                  <span class='ident'>their_secret</span>.<span class='ident'>clone</span>(), <span class='ident'>addr</span>);
             <span class='ident'>socket</span> <span class='op'>=</span> <span class='ident'>s</span>;
@@ -392,6 +452,72 @@
                            <span class='string'>&quot;Timed out waiting for rendevous connection&quot;</span>))
     }
 }
+
+<span class='attribute'>#[<span class='ident'>cfg</span>(<span class='ident'>test</span>)]</span>
+<span class='kw'>mod</span> <span class='ident'>tests</span> {
+    <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>sync</span>::<span class='ident'>mpsc</span>;
+    <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>thread</span>;
+    <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>time</span>::<span class='ident'>Duration</span>;
+    <span class='kw'>use</span> <span class='ident'>rand</span>;
+
+    <span class='kw'>use</span> <span class='ident'>mapping_context</span>::<span class='ident'>MappingContext</span>;
+    <span class='kw'>use</span> <span class='ident'>mapped_udp_socket</span>::<span class='ident'>MappedUdpSocket</span>;
+    <span class='kw'>use</span> <span class='ident'>punched_udp_socket</span>::<span class='ident'>PunchedUdpSocket</span>;
+    <span class='kw'>use</span> <span class='ident'>rendezvous_info</span>::<span class='ident'>gen_rendezvous_info</span>;
+
+    <span class='kw'>fn</span> <span class='ident'>two_peers_punch_hole_over_loopback</span>() {
+        <span class='kw'>let</span> <span class='ident'>mapping_context</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>MappingContext</span>::<span class='ident'>new</span>().<span class='ident'>result_discard</span>());
+        <span class='kw'>let</span> <span class='ident'>mapped_socket_0</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>MappedUdpSocket</span>::<span class='ident'>new</span>(<span class='kw-2'>&amp;</span><span class='ident'>mapping_context</span>));
+        <span class='kw'>let</span> <span class='ident'>mapped_socket_1</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>MappedUdpSocket</span>::<span class='ident'>new</span>(<span class='kw-2'>&amp;</span><span class='ident'>mapping_context</span>));
+
+        <span class='kw'>let</span> <span class='ident'>socket_0</span> <span class='op'>=</span> <span class='ident'>mapped_socket_0</span>.<span class='ident'>socket</span>;
+        <span class='kw'>let</span> <span class='ident'>socket_1</span> <span class='op'>=</span> <span class='ident'>mapped_socket_1</span>.<span class='ident'>socket</span>;
+        <span class='kw'>let</span> (<span class='ident'>priv_info_0</span>, <span class='ident'>pub_info_0</span>) <span class='op'>=</span> <span class='ident'>gen_rendezvous_info</span>(<span class='ident'>mapped_socket_0</span>.<span class='ident'>endpoints</span>);
+        <span class='kw'>let</span> (<span class='ident'>priv_info_1</span>, <span class='ident'>pub_info_1</span>) <span class='op'>=</span> <span class='ident'>gen_rendezvous_info</span>(<span class='ident'>mapped_socket_1</span>.<span class='ident'>endpoints</span>);
+
+        <span class='kw'>let</span> (<span class='ident'>tx_0</span>, <span class='ident'>rx_0</span>) <span class='op'>=</span> <span class='ident'>mpsc</span>::<span class='ident'>channel</span>();
+        <span class='kw'>let</span> (<span class='ident'>tx_1</span>, <span class='ident'>rx_1</span>) <span class='op'>=</span> <span class='ident'>mpsc</span>::<span class='ident'>channel</span>();
+
+        <span class='kw'>let</span> <span class='ident'>jh_0</span> <span class='op'>=</span> <span class='macro'>thread</span><span class='macro'>!</span>(<span class='string'>&quot;two_peers_hole_punch_over_loopback punch socket 0&quot;</span>, <span class='kw'>move</span> <span class='op'>||</span> {
+            <span class='kw'>let</span> <span class='ident'>res</span> <span class='op'>=</span> <span class='ident'>PunchedUdpSocket</span>::<span class='ident'>punch_hole</span>(<span class='ident'>socket_0</span>,
+                                                   <span class='ident'>priv_info_0</span>,
+                                                   <span class='ident'>pub_info_1</span>);
+            <span class='ident'>tx_0</span>.<span class='ident'>send</span>(<span class='ident'>res</span>);
+        });
+        <span class='kw'>let</span> <span class='ident'>jh_1</span> <span class='op'>=</span> <span class='macro'>thread</span><span class='macro'>!</span>(<span class='string'>&quot;two_peers_hole_punch_over_loopback punch socket 1&quot;</span>, <span class='kw'>move</span> <span class='op'>||</span> {
+            <span class='kw'>let</span> <span class='ident'>res</span> <span class='op'>=</span> <span class='ident'>PunchedUdpSocket</span>::<span class='ident'>punch_hole</span>(<span class='ident'>socket_1</span>,
+                                                   <span class='ident'>priv_info_1</span>,
+                                                   <span class='ident'>pub_info_0</span>);
+            <span class='ident'>tx_1</span>.<span class='ident'>send</span>(<span class='ident'>res</span>);
+        });
+
+        <span class='ident'>thread</span>::<span class='ident'>sleep</span>(<span class='ident'>Duration</span>::<span class='ident'>from_millis</span>(<span class='number'>500</span>));
+        <span class='kw'>let</span> <span class='ident'>punched_socket_0</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>rx_0</span>.<span class='ident'>try_recv</span>()));
+        <span class='kw'>let</span> <span class='ident'>punched_socket_1</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>rx_1</span>.<span class='ident'>try_recv</span>()));
+
+        <span class='kw'>const</span> <span class='ident'>DATA_LEN</span>: <span class='ident'>usize</span> <span class='op'>=</span> <span class='number'>8</span>;
+        <span class='kw'>let</span> <span class='ident'>data_send</span>: [<span class='ident'>u8</span>; <span class='ident'>DATA_LEN</span>] <span class='op'>=</span> <span class='ident'>rand</span>::<span class='ident'>random</span>();
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>data_recv</span>;
+        
+        <span class='comment'>// Send data from 0 to 1</span>
+        <span class='ident'>data_recv</span> <span class='op'>=</span> [<span class='number'>0u8</span>; <span class='ident'>DATA_LEN</span>];
+        <span class='ident'>punched_socket_0</span>.<span class='ident'>socket</span>.<span class='ident'>send_to</span>(<span class='kw-2'>&amp;</span><span class='ident'>data_send</span>[..], <span class='kw-2'>&amp;</span><span class='op'>*</span><span class='ident'>punched_socket_0</span>.<span class='ident'>peer_addr</span>);
+        <span class='kw'>let</span> (<span class='ident'>n</span>, _) <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>punched_socket_1</span>.<span class='ident'>socket</span>.<span class='ident'>recv_from</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>data_recv</span>[..]));
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>n</span>, <span class='ident'>DATA_LEN</span>);
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>data_send</span>, <span class='ident'>data_recv</span>);
+
+        <span class='comment'>// Send data from 1 to 0</span>
+        <span class='ident'>data_recv</span> <span class='op'>=</span> [<span class='number'>0u8</span>; <span class='ident'>DATA_LEN</span>];
+        <span class='ident'>punched_socket_1</span>.<span class='ident'>socket</span>.<span class='ident'>send_to</span>(<span class='kw-2'>&amp;</span><span class='ident'>data_send</span>[..], <span class='kw-2'>&amp;</span><span class='op'>*</span><span class='ident'>punched_socket_1</span>.<span class='ident'>peer_addr</span>);
+        <span class='kw'>let</span> (<span class='ident'>n</span>, _) <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>punched_socket_0</span>.<span class='ident'>socket</span>.<span class='ident'>recv_from</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>data_recv</span>[..]));
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>n</span>, <span class='ident'>DATA_LEN</span>);
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>data_send</span>, <span class='ident'>data_recv</span>);
+
+        <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>jh_0</span>.<span class='ident'>join</span>());
+        <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>jh_1</span>.<span class='ident'>join</span>());
+    }
+}
+
 </pre>
 </section>
     <section id='search' class="content hidden"></section>
