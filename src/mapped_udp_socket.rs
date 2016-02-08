@@ -30,6 +30,7 @@ use get_if_addrs;
 use ip::{SocketAddrExt, IpAddr};
 use maidsafe_utilities::serialisation::{deserialise, serialise};
 use socket_addr::SocketAddr;
+use w_result::{WResult, WOk, WErr};
 
 use hole_punch_server_addr::HolePunchServerAddr;
 use listener_message::{ListenerRequest, ListenerResponse};
@@ -48,16 +49,97 @@ pub struct MappedUdpSocket {
     pub endpoints: Vec<MappedSocketAddr>
 }
 
+quick_error! {
+    /// Errors returned by MappedUdpSocket::map
+    #[derive(Debug)]
+    pub enum MappedUdpSocketMapError {
+        /// Error getting the local address of the socket.
+        SocketLocalAddr { err: io::Error } {
+            description("Error getting local address of socket \
+                         (have you called bind() on the socket?)")
+            display("Error getting local address of socket. \
+                     UdpSocket::local_addr returned an error: {}
+                     (have you called bind() on the socket?).",
+                     err)
+            cause(err)
+        }
+        /// IO error receiving data on the socket.
+        RecvError { err: io::Error } {
+            description("IO error receiving data on socket")
+            display("IO error receiving data on socket: {}", err)
+            cause(err)
+        }
+        /// IO error sending data on the socket.
+        SendError { err: io::Error } {
+            description("IO error sending data on socket")
+            display("IO error sending data on socket: {}", err)
+            cause(err)
+        }
+    }
+}
+
+quick_error! {
+    /// Warnings raised by MappedUdpSocket::map
+    #[derive(Debug)]
+    pub enum MappedUdpSocketMapWarning {
+        /// Error searching for IGD gateway
+        FindGateway { err: igd::SearchError } {
+            description("Error searching for IGD gateway")
+            display("Error searching for IGD gateway. \
+                     igd::search_gateway_from_timeout returned an error: {}",
+                     err)
+            cause(err)
+        }
+        /// Error mapping external address and port through IGD gateway
+        GetExternalPort {
+            gateway_addr: net::SocketAddrV4,
+            err: igd::AddAnyPortError,
+        } {
+            description("Error mapping external address and port through IGD \
+                         gateway")
+            display("Error mapping external address and port through IGD \
+                     gateway at address {}. igd::Gateway::get_any_address \
+                     returned an error: {}", gateway_addr, err)
+            cause(err)
+        }
+    }
+}
+
+quick_error! {
+    /// Errors returned by MappedUdpSocket::new
+    #[derive(Debug)]
+    pub enum MappedUdpSocketNewError {
+        /// Error creating new udp socket bound to 0.0.0.0:0
+        CreateSocket { err: io::Error } {
+            description("Error creating a new udp socket bound to 0.0.0.0:0")
+            display("Error creating a new udp socket bound to 0.0.0.0:0. \
+                     UdpSocket::bind returned an IO error: {}", err)
+            cause(err)
+        }
+        /// Error mapping udp socket.
+        MapSocket { err: MappedUdpSocketMapError } {
+            description("Error mapping udp socket")
+            display("Error mapping udp socket. MappedUdpSocket::map returned \
+                     an error: {}", err)
+            cause(err)
+        }
+    }
+}
+
 impl MappedUdpSocket {
     /// Map an existing `UdpSocket`.
     pub fn map(socket: UdpSocket, mc: &MappingContext)
-               -> io::Result<MappedUdpSocket>
+               -> WResult<MappedUdpSocket, MappedUdpSocketMapWarning, MappedUdpSocketMapError>
     {
         let mut endpoints = Vec::new();
+        let mut warnings = Vec::new();
 
         // Add the local addresses of this socket for the sake of peers on the name machine or
         // same local network as us.
-        let local_addr = try!(socket.local_addr());
+        let local_addr = match socket.local_addr() {
+            Ok(local_addr) => local_addr,
+            Err(e) => return WErr(MappedUdpSocketMapError::SocketLocalAddr { err: e })
+        };
         match SocketAddrExt::ip(&local_addr) {
             IpAddr::V4(ipv4_addr) => {
                 if socket_utils::ipv4_is_unspecified(&ipv4_addr) {
@@ -81,8 +163,11 @@ impl MappedUdpSocket {
                                         nat_restricted: false,
                                     });
                                 },
-                                Err(_) => {
-                                    // TODO(canndrew): report this error
+                                Err(e) => {
+                                    warnings.push(MappedUdpSocketMapWarning::GetExternalPort {
+                                        gateway_addr: gateway.addr,
+                                        err: e,
+                                    });
                                 }
                             }
                         };
@@ -108,12 +193,14 @@ impl MappedUdpSocket {
                     let gateway_opt = match gateway_opt_opt {
                         Some(gateway_opt) => gateway_opt,
                         // We don't where this local address came from so search for an IGD gateway
-                        // at it.(
+                        // at it.
                         None => {
                             match igd::search_gateway_from_timeout(ipv4_addr, Duration::from_secs(1)) {
                                 Ok(gateway) => Some(gateway),
-                                Err(_) => {
-                                    // TODO(canndrew): report this error
+                                Err(e) => {
+                                    warnings.push(MappedUdpSocketMapWarning::FindGateway {
+                                        err: e
+                                    });
                                     None
                                 }
                             }
@@ -131,8 +218,11 @@ impl MappedUdpSocket {
                                     nat_restricted: false,
                                 });
                             },
-                            Err(_) => {
-                                // TODO(canndrew): report this error
+                            Err(e) => {
+                                warnings.push(MappedUdpSocketMapWarning::GetExternalPort {
+                                    gateway_addr: gateway.addr,
+                                    err: e,
+                                });
                             }
                         }
                     };
@@ -178,13 +268,17 @@ impl MappedUdpSocket {
             // networks, not just the first ten in the list or something.
             for simple_server in &simple_servers {
                 // TODO(canndrew): What should we do if we get a partial write?
-                let _ = try!(socket.send_to(&send_data[..], &**simple_server));
+                let _ = match socket.send_to(&send_data[..], &**simple_server) {
+                    Ok(n) => n,
+                    Err(e) => return WErr(MappedUdpSocketMapError::SendError { err: e }),
+                };
             };
             let mut recv_data = [0u8; MAX_DATAGRAM_SIZE];
             loop {
-                let (read_size, recv_addr) = match try!(socket.recv_until(&mut recv_data[..], deadline)) {
-                    Some(res) => res,
-                    None => break,
+                let (read_size, recv_addr) = match socket.recv_until(&mut recv_data[..], deadline) {
+                    Ok(Some(res)) => res,
+                    Ok(None) => break,
+                    Err(e) => return WErr(MappedUdpSocketMapError::RecvError { err: e }),
                 };
                 if let Ok(ListenerResponse::EchoExternalAddr { external_addr }) =
                        deserialise::<ListenerResponse>(&recv_data[..read_size]) {
@@ -220,14 +314,44 @@ impl MappedUdpSocket {
             }
         }
 
-        Ok(MappedUdpSocket {
+        WOk(MappedUdpSocket {
             socket: socket,
             endpoints: endpoints,
-        })
+        }, warnings)
     }
 
     /// Create a new `MappedUdpSocket`
-    pub fn new(mc: &MappingContext) -> io::Result<MappedUdpSocket> {
-        Self::map(try!(UdpSocket::bind("0.0.0.0:0")), mc)
+    pub fn new(mc: &MappingContext)
+            -> WResult<MappedUdpSocket, MappedUdpSocketMapWarning, MappedUdpSocketNewError>
+    {
+        // Sometimes we might bind a socket to a random port then find that we have an IGD gateway
+        // that could give us an unrestricted external port but that it can't map the random port
+        // number we got. Hence we might need to try several times with different port numbers.
+        let mut attempt = 0;
+        'attempt: loop {
+            attempt += 1;
+            let socket = match UdpSocket::bind("0.0.0.0:0") {
+                Ok(socket) => socket,
+                Err(e) => return WErr(MappedUdpSocketNewError::CreateSocket { err: e }),
+            };
+            let (socket, warnings) = match Self::map(socket, mc) {
+                WOk(s, ws) => (s, ws),
+                WErr(e) => return WErr(MappedUdpSocketNewError::MapSocket { err: e }),
+            };
+            if attempt < 3 {
+                for warning in &warnings {
+                    match *warning {
+                        // If we bound to a port that the IGD gateway can't map, rebind and try again.
+                        MappedUdpSocketMapWarning::GetExternalPort {
+                            err: igd::AddAnyPortError::ExternalPortInUse,
+                            ..
+                        } => continue 'attempt,
+                        _ => (),
+                    }
+                }
+            }
+            return WOk(socket, warnings);
+        }
     }
 }
+

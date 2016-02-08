@@ -185,8 +185,8 @@ mod tests {
 
     fn two_peers_punch_hole_over_loopback() {
         let mapping_context = unwrap_result!(MappingContext::new().result_discard());
-        let mapped_socket_0 = unwrap_result!(MappedUdpSocket::new(&mapping_context));
-        let mapped_socket_1 = unwrap_result!(MappedUdpSocket::new(&mapping_context));
+        let mapped_socket_0 = unwrap_result!(MappedUdpSocket::new(&mapping_context).result_discard());
+        let mapped_socket_1 = unwrap_result!(MappedUdpSocket::new(&mapping_context).result_discard());
 
         let socket_0 = mapped_socket_0.socket;
         let socket_1 = mapped_socket_1.socket;

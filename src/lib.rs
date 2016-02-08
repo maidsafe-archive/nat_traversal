@@ -61,6 +61,8 @@ extern crate sodiumoxide;
 extern crate libc;
 extern crate w_result;
 extern crate ip;
+#[macro_use]
+extern crate quick_error;
 
 pub use mapping_context::MappingContext;
 pub use hole_punch_server_addr::HolePunchServerAddr;
