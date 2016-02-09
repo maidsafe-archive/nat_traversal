@@ -438,7 +438,7 @@
         <span class='comment'>// communicate with.</span>
 
         <span class='kw'>const</span> <span class='ident'>DELAY_BETWEEN_RESENDS_MS</span>: <span class='ident'>i64</span> <span class='op'>=</span> <span class='number'>600</span>;
-        <span class='kw'>const</span> <span class='ident'>TOTAL_TIMEOUT_MS</span>: <span class='ident'>i64</span> <span class='op'>=</span> <span class='number'>3000</span>;
+        <span class='kw'>const</span> <span class='ident'>TOTAL_TIMEOUT_MS</span>: <span class='ident'>i64</span> <span class='op'>=</span> <span class='number'>10000</span>;
 
         <span class='kw'>let</span> <span class='ident'>start_time</span> <span class='op'>=</span> <span class='ident'>time</span>::<span class='ident'>SteadyTime</span>::<span class='ident'>now</span>();
         <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>deadline</span> <span class='op'>=</span> <span class='ident'>start_time</span>;
