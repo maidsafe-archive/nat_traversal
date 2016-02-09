@@ -124,7 +124,7 @@ impl PunchedUdpSocket {
         // communicate with.
 
         const DELAY_BETWEEN_RESENDS_MS: i64 = 600;
-        const TOTAL_TIMEOUT_MS: i64 = 3000;
+        const TOTAL_TIMEOUT_MS: i64 = 10000;
 
         let start_time = time::SteadyTime::now();
         let mut deadline = start_time;
