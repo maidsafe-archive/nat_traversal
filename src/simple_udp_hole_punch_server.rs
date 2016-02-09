@@ -31,12 +31,14 @@ use maidsafe_utilities::serialisation::{deserialise, serialise};
 use maidsafe_utilities::thread::RaiiThreadJoiner;
 use rand;
 use sodiumoxide::crypto::sign::PublicKey;
+use w_result::{WResult, WOk, WErr};
 
 use socket_addr::SocketAddr;
 use listener_message::{ListenerRequest, ListenerResponse};
 
 use mapping_context::MappingContext;
 use mapped_socket_addr::MappedSocketAddr;
+use mapped_udp_socket::{MappedUdpSocket, MappedUdpSocketNewError, MappedUdpSocketMapWarning};
 
 const UDP_READ_TIMEOUT_SECS: u64 = 2;
 
@@ -45,33 +47,64 @@ pub struct SimpleUdpHolePunchServer<'a> {
     mapping_context: &'a MappingContext,
     stop_flag: Arc<AtomicBool>,
     _raii_joiner: RaiiThreadJoiner,
+    known_endpoints: Vec<MappedSocketAddr>,
+}
+
+quick_error! {
+    #[derive(Debug)]
+    /// Errors returned by SimpleUdpHolePunchServer::new
+    pub enum SimpleUdpHolePunchServerNewError {
+        /// Error creating a mapped udp socket to listen on.
+        CreateMappedSocket { err: MappedUdpSocketNewError } {
+            description("Error creating a mapped udp socket to listen on.")
+            display("Error creating a mapped udp socket to listen on: {}", err)
+            cause(err)
+        }
+        /// Error setting the timeout on the server's listening socket.
+        SetSocketTimeout { err: io::Error } {
+            description("Error setting the timeout on the server's listening socket.")
+            display("Error setting the timeout on the server's listening socket: {}.", err)
+            cause(err)
+        }
+    }
 }
 
 impl<'a> SimpleUdpHolePunchServer<'a> {
     /// Create a new server. This will spawn a background thread which will serve requests until
     /// the server is dropped.
     pub fn new(mapping_context: &'a MappingContext)
-        -> io::Result<SimpleUdpHolePunchServer<'a>> {
-        let udp_socket = try!(UdpSocket::bind("0.0.0.0:0"));
+        -> WResult<SimpleUdpHolePunchServer<'a>,
+                   MappedUdpSocketMapWarning,
+                   SimpleUdpHolePunchServerNewError>
+    {
+        let (mapped_socket, warnings) = match MappedUdpSocket::new(mapping_context) {
+            WOk(mapped_socket, warnings) => (mapped_socket, warnings),
+            WErr(e) => {
+                return WErr(SimpleUdpHolePunchServerNewError::CreateMappedSocket { err: e });
+            }
+        };
+
+        let udp_socket = mapped_socket.socket;
         let stop_flag = Arc::new(AtomicBool::new(false));
         let cloned_stop_flag = stop_flag.clone();
 
-        try!(udp_socket.set_read_timeout(Some(Duration::from_secs(UDP_READ_TIMEOUT_SECS))));
-        let port = try!(udp_socket.local_addr()).port();
-
-        const MAX_READ_SIZE: usize = 1024;
-
-        let mut read_buf = [0; MAX_READ_SIZE];
+        match udp_socket.set_read_timeout(Some(Duration::from_secs(UDP_READ_TIMEOUT_SECS))) {
+            Ok(()) => (),
+            Err(e) => {
+                return WErr(SimpleUdpHolePunchServerNewError::SetSocketTimeout { err: e })
+            }
+        };
 
         let raii_joiner = RaiiThreadJoiner::new(thread!("SimpleUdpHolePunchServer", move || {
             Self::run(udp_socket, cloned_stop_flag);
         }));
 
-        Ok(SimpleUdpHolePunchServer {
+        WOk(SimpleUdpHolePunchServer {
             mapping_context: mapping_context,
             stop_flag: stop_flag,
             _raii_joiner: raii_joiner,
-        })
+            known_endpoints: mapped_socket.endpoints,
+        }, warnings)
     }
 
     fn run(udp_socket: UdpSocket,
@@ -128,7 +161,8 @@ impl<'a> SimpleUdpHolePunchServer<'a> {
         // So it wants to find external ports with `nat_restricted ==
         // false`. Those are the only ones worth sharing with other peers. it
         // can get those by doing upnp for example
-        unimplemented!();
+
+        self.known_endpoints.clone()
     }
 }
 
