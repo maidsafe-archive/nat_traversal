@@ -20,7 +20,10 @@
 
 use std::io;
 use std::net::UdpSocket;
+use std;
+use std::thread;
 
+use time;
 use socket_addr::SocketAddr;
 
 use periodic_sender::PeriodicSender;
@@ -34,107 +37,6 @@ struct HolePunch {
     pub ack: bool,
 }
 
-// TODO All this function should be returning is either an Ok(()) or Err(..)
-/// Returns the socket along with the peer's SocketAddr
-fn blocking_udp_punch_hole(udp_socket: UdpSocket,
-                           our_secret: [u8; 4],
-                           their_secret: [u8; 4],
-                           peer_addr: SocketAddr)
-                           -> (UdpSocket, io::Result<SocketAddr>) {
-    // Cbor seems to serialize into bytes of different sizes and
-    // it sometimes exceeded 16 bytes, let's be safe and use 128.
-    const MAX_DATAGRAM_SIZE: usize = 128;
-
-    let send_data = {
-        let hole_punch = HolePunch {
-            secret: our_secret,
-            ack: false,
-        };
-        let mut enc = ::cbor::Encoder::from_memory();
-        enc.encode(::std::iter::once(&hole_punch)).unwrap();
-        enc.into_bytes()
-    };
-
-    assert!(send_data.len() <= MAX_DATAGRAM_SIZE,
-            format!("Data exceed MAX_DATAGRAM_SIZE in blocking_udp_punch_hole: {} > {}",
-                    send_data.len(),
-                    MAX_DATAGRAM_SIZE));
-
-    let addr_res: io::Result<SocketAddr> = ::crossbeam::scope(|scope| {
-        let sender = try!(udp_socket.try_clone());
-        let receiver = try!(udp_socket.try_clone());
-        let periodic_sender = PeriodicSender::start(sender,
-                                                    peer_addr,
-                                                    scope,
-                                                    send_data,
-                                                    ::std::time::Duration::from_millis(500));
-
-        let addr_res: io::Result<Option<SocketAddr>> =
-            (|| {
-                let mut recv_data = [0u8; MAX_DATAGRAM_SIZE];
-                let mut peer_addr: Option<SocketAddr> = None;
-                let deadline = ::time::SteadyTime::now() + ::time::Duration::seconds(2);
-                loop {
-                    let (read_size, addr) = match try!(receiver.recv_until(&mut recv_data[..],
-                                                                           deadline)) {
-                        Some(x) => x,
-                        None => {
-                            return Ok(peer_addr);
-                        }
-                    };
-
-                    match ::cbor::Decoder::from_reader(&recv_data[..read_size])
-                              .decode::<HolePunch>()
-                              .next() {
-                        Some(Ok(ref hp)) => {
-                            if hp.secret == our_secret && hp.ack {
-                                return Ok(Some(addr));
-                            }
-                            if hp.secret == their_secret {
-                                let send_data = {
-                                    let hole_punch = HolePunch {
-                                        secret: their_secret,
-                                        ack: true,
-                                    };
-                                    let mut enc = ::cbor::Encoder::from_memory();
-                                    enc.encode(::std::iter::once(&hole_punch)).unwrap();
-                                    enc.into_bytes()
-                                };
-                                periodic_sender.set_payload(send_data);
-                                periodic_sender.set_destination(addr);
-                                // TODO Do not do this. The only thing we should do is make
-                                // sure the supplied peer_addr to this function is == to this
-                                // addr (which can be spoofed anyway so additionally verify the
-                                // secret above), otherwise it would mean we are connecting to
-                                // someone who we are not sending HolePunch struct to
-                                // TODO(canndrew): Actually it makes sense that their HolePunch
-                                // message might come from an unexpected address. Instead we should
-                                // sign these messages to make sure we are talking to the right
-                                // person.
-                                peer_addr = Some(addr);
-                            } else {
-                                info!("udp_hole_punch non matching secret");
-                            }
-                        }
-                        x => {
-                            info!("udp_hole_punch received invalid data: {:?}", x);
-                        }
-                    };
-                }
-            })();
-        match addr_res {
-            Err(e) => Err(e),
-            Ok(Some(x)) => Ok(x),
-            Ok(None) => {
-                Err(io::Error::new(io::ErrorKind::TimedOut,
-                                   "Timed out waiting for rendevous connection"))
-            }
-        }
-    });
-
-    (udp_socket, addr_res)
-}
-
 /// A udp socket that has been hole punched.
 pub struct PunchedUdpSocket {
     /// The UDP socket.
@@ -142,6 +44,8 @@ pub struct PunchedUdpSocket {
     /// The remote address that this socket is able to send messages to and receive messages from.
     pub peer_addr: SocketAddr,
 }
+
+
 
 impl PunchedUdpSocket {
     /// Punch a udp socket using a mapped socket and the peer's rendezvous info.
@@ -154,16 +58,144 @@ impl PunchedUdpSocket {
         let our_secret
             = rendezvous_info::get_priv_secret(our_priv_rendezvous_info);
 
-        for endpoint in endpoints {
-            let addr = endpoint.addr;
-            let (s, r) = blocking_udp_punch_hole(socket, our_secret.clone(),
-                                                 their_secret.clone(), addr);
-            socket = s;
-            if let Ok(peer_addr) = r {
-                return Ok(PunchedUdpSocket {
-                    socket: socket,
-                    peer_addr: peer_addr
-                });
+        // Cbor seems to serialize into bytes of different sizes and
+        // it sometimes exceeded 16 bytes, let's be safe and use 128.
+        const MAX_DATAGRAM_SIZE: usize = 128;
+
+        let send_data = {
+            let hole_punch = HolePunch {
+                secret: our_secret,
+                ack: false,
+            };
+            let mut enc = ::cbor::Encoder::from_memory();
+            enc.encode(::std::iter::once(&hole_punch)).unwrap();
+            enc.into_bytes()
+        };
+
+        assert!(send_data.len() <= MAX_DATAGRAM_SIZE,
+                format!("Data exceed MAX_DATAGRAM_SIZE in blocking_udp_punch_hole: {} > {}",
+                        send_data.len(),
+                        MAX_DATAGRAM_SIZE));
+
+        let mut recv_data = [0u8; MAX_DATAGRAM_SIZE];
+
+        // TODO(canndrew): Have a hard think about whether this is the best possible algorithm for
+        // doing this.
+        //
+        // As far as I can see, the desired properties are:
+        //  (a) We shouldn't read from the socket if the peer might have already returned their
+        //      socket to the caller and started sending us real data. Otherwise we have to either.
+        //      drop that data or return it in the PunchedUdpSocket struct.
+        //  (b) We should only return the socket once there are no more hole-punch messages to
+        //      receive. Otherwise the caller will start reading from the socket and find crap on the wire.
+        //  (c) We should try to return as soon as possible after establishing a connection.
+        //  (d) We should account for the fact that UDP is unreliable by resending messages.
+        //
+        // The problem is none of these requirements are possible to fulfill 100% of the time and
+        // they all conflict with each other. So we need to decide how bad these problems are
+        // relative to each other. In the case of (a) sending back data inside PunchedUdpSocket
+        // wouldn't be the end of the world but it would be pretty annoying for the user as they'd
+        // need to process that data and couldn't just start using their socket whereever it's
+        // needed. Applications that use UDP should account for the fact that data can dissapear
+        // anyway but it might be problematic for some apps if the very first chunk of data very
+        // often dissapears. In the case of (b) applications need to account for the fact that
+        // random data can sometimes appear on a UDP socket but they're probably not expecting to
+        // get random data from the peer they're talking to. We should at the very least make sure
+        // our hole punch packets are easily recognizable and give the user a facility to identify
+        // them and throw them away. (c) is important but it conflicts with (b) and (d). In the
+        // case of (d) it would helpful to have some idea of the probability of a given packet
+        // being lost and balance that against (c).
+        //
+        // Assuming we successfully punch a hole there's four ways this can happen: (0) we get one
+        // of their hole punching messages and it's from an address we were sending to. In this
+        // case they likely got our hole punch message(s) aswell although it's possible the packet
+        // got dropped. (1) We get one of their hole punching messages from an address that we
+        // weren't sending to. In this case they haven't received any of our messages and we'll
+        // definitely need to send an ack to their address. (2) We receive an ack to one of our
+        // messages and it's from an address we weren't sending to. I don't think this should ever
+        // happen. (3) We receive an ack to one of our packets and it's from an address we were
+        // sending to. In this case they likely initially didn't have an address they could contact
+        // us on.
+        //
+        // For now we keep the algorithm simple: If we get a hole punch message we send back two
+        // acks with a delay in between before returning. If we get an ack we return immediately.
+
+        // Spend TOTAL_TIMEOUT_MS trying to get their actual address that we can
+        // communicate with.
+
+        const DELAY_BETWEEN_RESENDS_MS: i64 = 600;
+        const TOTAL_TIMEOUT_MS: i64 = 3000;
+
+        let start_time = time::SteadyTime::now();
+        let mut deadline = start_time;
+        let total_deadline = start_time + time::Duration::milliseconds(TOTAL_TIMEOUT_MS);
+        while deadline < total_deadline {
+            deadline = deadline + time::Duration::milliseconds(DELAY_BETWEEN_RESENDS_MS);
+            for endpoint in &endpoints {
+                let addr = &endpoint.addr;
+                // TODO(canndrew): How should we handle partial write?
+                let _ = match socket.send_to(&send_data[..], &**addr) {
+                    Ok(n) => n,
+                    Err(e) => return Err(e),
+                };
+            }
+            // Keep reading until it's time to send to all endpoints again.
+            loop {
+                let (read_size, addr) = match socket.recv_until(&mut recv_data[..], deadline) {
+                    Ok(Some(x)) => x,
+                    Ok(None) => break,
+                    Err(e) => return Err(e),
+                };
+                match ::cbor::Decoder::from_reader(&recv_data[..read_size])
+                             .decode::<HolePunch>()
+                             .next() {
+                    Some(Ok(ref hp)) => {
+                        if hp.secret == our_secret && hp.ack {
+                            return Ok(PunchedUdpSocket {
+                                socket: socket,
+                                peer_addr: addr,
+                            });
+                        }
+                        if hp.secret == their_secret {
+                            let send_data = {
+                                let hole_punch = HolePunch {
+                                    secret: their_secret,
+                                    ack: true,
+                                };
+                                let mut enc = ::cbor::Encoder::from_memory();
+                                enc.encode(::std::iter::once(&hole_punch)).unwrap();
+                                enc.into_bytes()
+                            };
+
+                            assert!(send_data.len() <= MAX_DATAGRAM_SIZE,
+                                    format!("Data exceed MAX_DATAGRAM_SIZE in blocking_udp_punch_hole: {} > {}",
+                                            send_data.len(),
+                                            MAX_DATAGRAM_SIZE));
+
+                            // TODO(canndrew): handle partial writes.
+                            let _ = match socket.send_to(&send_data[..], &*addr) {
+                                Ok(n) => n,
+                                Err(e) => return Err(e),
+                            };
+                            thread::sleep(std::time::Duration::from_millis(100));
+                            let _ = match socket.send_to(&send_data[..], &*addr) {
+                                Ok(n) => n,
+                                Err(e) => return Err(e),
+                            };
+                            return Ok(PunchedUdpSocket {
+                                socket: socket,
+                                peer_addr: addr,
+                            });
+                        }
+                        else {
+                            // TODO(canndrew): report this error
+                        }
+                    }
+                    Some(Err(e)) => {
+                        // TODO(canndrew): report this error
+                    }
+                    None => (),
+                };
             }
         }
         Err(io::Error::new(io::ErrorKind::TimedOut,
