@@ -3,7 +3,11 @@ extern crate maidsafe_utilities;
 extern crate nat_traversal;
 extern crate w_result;
 extern crate rustc_serialize;
+extern crate socket_addr;
 
+use std::net::ToSocketAddrs;
+
+use socket_addr::SocketAddr;
 use nat_traversal::{MappingContext, gen_rendezvous_info, MappedUdpSocket, PunchedUdpSocket};
 use w_result::{WOk, WErr};
 
@@ -24,6 +28,46 @@ fn main() {
             return;
         }
     };
+
+    // Now we can register a set of external hole punching servers that may be needed to complete
+    // the hole punching.
+    loop {
+        println!("");
+        println!("Enter the socket addresses of a simple hole punching server or hit return for none.");
+        println!("");
+        let mut addr_str = String::new();
+        match std::io::stdin().read_line(&mut addr_str) {
+            Ok(_) => (),
+            Err(e) => {
+                if e.kind() == std::io::ErrorKind::UnexpectedEof {
+                    println!("Exiting.");
+                    return;
+                }
+                println!("IO error reading stdin: {}", e);
+                return;
+            },
+        };
+        let addr_str = addr_str.trim();
+        if addr_str == "" {
+            break;
+        }
+        let mut addrs = match addr_str.to_socket_addrs() {
+            Ok(addrs) => addrs,
+            Err(e) => {
+                println!("Error parsing socket address: {}", e);
+                continue;
+            },
+        };
+        let addr = match addrs.next() {
+            Some(addr) => SocketAddr(addr),
+            None => {
+                println!("Invalid value");
+                continue;
+            }
+        };
+        println!("Registering address: {:#?}", addr);
+        mapping_context.add_simple_servers(vec![addr]);
+    }
 
     // Now we use our context to create a mapped udp socket.
     let mapped_socket = match MappedUdpSocket::new(&mapping_context) {
@@ -71,7 +115,7 @@ fn main() {
                     return;
                 }
                 println!("IO error reading stdin: {}", e);
-                continue;
+                return;
             },
         };
         match rustc_serialize::json::decode(&info_str) {
