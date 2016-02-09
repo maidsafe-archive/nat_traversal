@@ -279,6 +279,38 @@
 <span id="236">236</span>
 <span id="237">237</span>
 <span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
 </pre><pre class='rust '>
 <span class='comment'>// Copyright 2016 MaidSafe.net limited.</span>
 <span class='comment'>//</span>
@@ -302,7 +334,10 @@
 
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>io</span>;
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>net</span>::<span class='ident'>UdpSocket</span>;
+<span class='kw'>use</span> <span class='ident'>std</span>;
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>thread</span>;
 
+<span class='kw'>use</span> <span class='ident'>time</span>;
 <span class='kw'>use</span> <span class='ident'>socket_addr</span>::<span class='ident'>SocketAddr</span>;
 
 <span class='kw'>use</span> <span class='ident'>periodic_sender</span>::<span class='ident'>PeriodicSender</span>;
@@ -316,107 +351,6 @@
     <span class='kw'>pub</span> <span class='ident'>ack</span>: <span class='ident'>bool</span>,
 }
 
-<span class='comment'>// TODO All this function should be returning is either an Ok(()) or Err(..)</span>
-<span class='doccomment'>/// Returns the socket along with the peer&#39;s SocketAddr</span>
-<span class='kw'>fn</span> <span class='ident'>blocking_udp_punch_hole</span>(<span class='ident'>udp_socket</span>: <span class='ident'>UdpSocket</span>,
-                           <span class='ident'>our_secret</span>: [<span class='ident'>u8</span>; <span class='number'>4</span>],
-                           <span class='ident'>their_secret</span>: [<span class='ident'>u8</span>; <span class='number'>4</span>],
-                           <span class='ident'>peer_addr</span>: <span class='ident'>SocketAddr</span>)
-                           <span class='op'>-&gt;</span> (<span class='ident'>UdpSocket</span>, <span class='ident'>io</span>::<span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>SocketAddr</span><span class='op'>&gt;</span>) {
-    <span class='comment'>// Cbor seems to serialize into bytes of different sizes and</span>
-    <span class='comment'>// it sometimes exceeded 16 bytes, let&#39;s be safe and use 128.</span>
-    <span class='kw'>const</span> <span class='ident'>MAX_DATAGRAM_SIZE</span>: <span class='ident'>usize</span> <span class='op'>=</span> <span class='number'>128</span>;
-
-    <span class='kw'>let</span> <span class='ident'>send_data</span> <span class='op'>=</span> {
-        <span class='kw'>let</span> <span class='ident'>hole_punch</span> <span class='op'>=</span> <span class='ident'>HolePunch</span> {
-            <span class='ident'>secret</span>: <span class='ident'>our_secret</span>,
-            <span class='ident'>ack</span>: <span class='boolval'>false</span>,
-        };
-        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>enc</span> <span class='op'>=</span> ::<span class='ident'>cbor</span>::<span class='ident'>Encoder</span>::<span class='ident'>from_memory</span>();
-        <span class='ident'>enc</span>.<span class='ident'>encode</span>(::<span class='ident'>std</span>::<span class='ident'>iter</span>::<span class='ident'>once</span>(<span class='kw-2'>&amp;</span><span class='ident'>hole_punch</span>)).<span class='ident'>unwrap</span>();
-        <span class='ident'>enc</span>.<span class='ident'>into_bytes</span>()
-    };
-
-    <span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>send_data</span>.<span class='ident'>len</span>() <span class='op'>&lt;=</span> <span class='ident'>MAX_DATAGRAM_SIZE</span>,
-            <span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;Data exceed MAX_DATAGRAM_SIZE in blocking_udp_punch_hole: {} &gt; {}&quot;</span>,
-                    <span class='ident'>send_data</span>.<span class='ident'>len</span>(),
-                    <span class='ident'>MAX_DATAGRAM_SIZE</span>));
-
-    <span class='kw'>let</span> <span class='ident'>addr_res</span>: <span class='ident'>io</span>::<span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>SocketAddr</span><span class='op'>&gt;</span> <span class='op'>=</span> ::<span class='ident'>crossbeam</span>::<span class='ident'>scope</span>(<span class='op'>|</span><span class='ident'>scope</span><span class='op'>|</span> {
-        <span class='kw'>let</span> <span class='ident'>sender</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>udp_socket</span>.<span class='ident'>try_clone</span>());
-        <span class='kw'>let</span> <span class='ident'>receiver</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>udp_socket</span>.<span class='ident'>try_clone</span>());
-        <span class='kw'>let</span> <span class='ident'>periodic_sender</span> <span class='op'>=</span> <span class='ident'>PeriodicSender</span>::<span class='ident'>start</span>(<span class='ident'>sender</span>,
-                                                    <span class='ident'>peer_addr</span>,
-                                                    <span class='ident'>scope</span>,
-                                                    <span class='ident'>send_data</span>,
-                                                    ::<span class='ident'>std</span>::<span class='ident'>time</span>::<span class='ident'>Duration</span>::<span class='ident'>from_millis</span>(<span class='number'>500</span>));
-
-        <span class='kw'>let</span> <span class='ident'>addr_res</span>: <span class='ident'>io</span>::<span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>SocketAddr</span><span class='op'>&gt;&gt;</span> <span class='op'>=</span>
-            (<span class='op'>||</span> {
-                <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>recv_data</span> <span class='op'>=</span> [<span class='number'>0u8</span>; <span class='ident'>MAX_DATAGRAM_SIZE</span>];
-                <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>peer_addr</span>: <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>SocketAddr</span><span class='op'>&gt;</span> <span class='op'>=</span> <span class='prelude-val'>None</span>;
-                <span class='kw'>let</span> <span class='ident'>deadline</span> <span class='op'>=</span> ::<span class='ident'>time</span>::<span class='ident'>SteadyTime</span>::<span class='ident'>now</span>() <span class='op'>+</span> ::<span class='ident'>time</span>::<span class='ident'>Duration</span>::<span class='ident'>seconds</span>(<span class='number'>2</span>);
-                <span class='kw'>loop</span> {
-                    <span class='kw'>let</span> (<span class='ident'>read_size</span>, <span class='ident'>addr</span>) <span class='op'>=</span> <span class='kw'>match</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>receiver</span>.<span class='ident'>recv_until</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>recv_data</span>[..],
-                                                                           <span class='ident'>deadline</span>)) {
-                        <span class='prelude-val'>Some</span>(<span class='ident'>x</span>) <span class='op'>=&gt;</span> <span class='ident'>x</span>,
-                        <span class='prelude-val'>None</span> <span class='op'>=&gt;</span> {
-                            <span class='kw'>return</span> <span class='prelude-val'>Ok</span>(<span class='ident'>peer_addr</span>);
-                        }
-                    };
-
-                    <span class='kw'>match</span> ::<span class='ident'>cbor</span>::<span class='ident'>Decoder</span>::<span class='ident'>from_reader</span>(<span class='kw-2'>&amp;</span><span class='ident'>recv_data</span>[..<span class='ident'>read_size</span>])
-                              .<span class='ident'>decode</span>::<span class='op'>&lt;</span><span class='ident'>HolePunch</span><span class='op'>&gt;</span>()
-                              .<span class='ident'>next</span>() {
-                        <span class='prelude-val'>Some</span>(<span class='prelude-val'>Ok</span>(<span class='kw-2'>ref</span> <span class='ident'>hp</span>)) <span class='op'>=&gt;</span> {
-                            <span class='kw'>if</span> <span class='ident'>hp</span>.<span class='ident'>secret</span> <span class='op'>==</span> <span class='ident'>our_secret</span> <span class='op'>&amp;&amp;</span> <span class='ident'>hp</span>.<span class='ident'>ack</span> {
-                                <span class='kw'>return</span> <span class='prelude-val'>Ok</span>(<span class='prelude-val'>Some</span>(<span class='ident'>addr</span>));
-                            }
-                            <span class='kw'>if</span> <span class='ident'>hp</span>.<span class='ident'>secret</span> <span class='op'>==</span> <span class='ident'>their_secret</span> {
-                                <span class='kw'>let</span> <span class='ident'>send_data</span> <span class='op'>=</span> {
-                                    <span class='kw'>let</span> <span class='ident'>hole_punch</span> <span class='op'>=</span> <span class='ident'>HolePunch</span> {
-                                        <span class='ident'>secret</span>: <span class='ident'>their_secret</span>,
-                                        <span class='ident'>ack</span>: <span class='boolval'>true</span>,
-                                    };
-                                    <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>enc</span> <span class='op'>=</span> ::<span class='ident'>cbor</span>::<span class='ident'>Encoder</span>::<span class='ident'>from_memory</span>();
-                                    <span class='ident'>enc</span>.<span class='ident'>encode</span>(::<span class='ident'>std</span>::<span class='ident'>iter</span>::<span class='ident'>once</span>(<span class='kw-2'>&amp;</span><span class='ident'>hole_punch</span>)).<span class='ident'>unwrap</span>();
-                                    <span class='ident'>enc</span>.<span class='ident'>into_bytes</span>()
-                                };
-                                <span class='ident'>periodic_sender</span>.<span class='ident'>set_payload</span>(<span class='ident'>send_data</span>);
-                                <span class='ident'>periodic_sender</span>.<span class='ident'>set_destination</span>(<span class='ident'>addr</span>);
-                                <span class='comment'>// TODO Do not do this. The only thing we should do is make</span>
-                                <span class='comment'>// sure the supplied peer_addr to this function is == to this</span>
-                                <span class='comment'>// addr (which can be spoofed anyway so additionally verify the</span>
-                                <span class='comment'>// secret above), otherwise it would mean we are connecting to</span>
-                                <span class='comment'>// someone who we are not sending HolePunch struct to</span>
-                                <span class='comment'>// TODO(canndrew): Actually it makes sense that their HolePunch</span>
-                                <span class='comment'>// message might come from an unexpected address. Instead we should</span>
-                                <span class='comment'>// sign these messages to make sure we are talking to the right</span>
-                                <span class='comment'>// person.</span>
-                                <span class='ident'>peer_addr</span> <span class='op'>=</span> <span class='prelude-val'>Some</span>(<span class='ident'>addr</span>);
-                            } <span class='kw'>else</span> {
-                                <span class='macro'>info</span><span class='macro'>!</span>(<span class='string'>&quot;udp_hole_punch non matching secret&quot;</span>);
-                            }
-                        }
-                        <span class='ident'>x</span> <span class='op'>=&gt;</span> {
-                            <span class='macro'>info</span><span class='macro'>!</span>(<span class='string'>&quot;udp_hole_punch received invalid data: {:?}&quot;</span>, <span class='ident'>x</span>);
-                        }
-                    };
-                }
-            })();
-        <span class='kw'>match</span> <span class='ident'>addr_res</span> {
-            <span class='prelude-val'>Err</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='prelude-val'>Err</span>(<span class='ident'>e</span>),
-            <span class='prelude-val'>Ok</span>(<span class='prelude-val'>Some</span>(<span class='ident'>x</span>)) <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>(<span class='ident'>x</span>),
-            <span class='prelude-val'>Ok</span>(<span class='prelude-val'>None</span>) <span class='op'>=&gt;</span> {
-                <span class='prelude-val'>Err</span>(<span class='ident'>io</span>::<span class='ident'>Error</span>::<span class='ident'>new</span>(<span class='ident'>io</span>::<span class='ident'>ErrorKind</span>::<span class='ident'>TimedOut</span>,
-                                   <span class='string'>&quot;Timed out waiting for rendevous connection&quot;</span>))
-            }
-        }
-    });
-
-    (<span class='ident'>udp_socket</span>, <span class='ident'>addr_res</span>)
-}
-
 <span class='doccomment'>/// A udp socket that has been hole punched.</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>PunchedUdpSocket</span> {
     <span class='doccomment'>/// The UDP socket.</span>
@@ -424,6 +358,8 @@
     <span class='doccomment'>/// The remote address that this socket is able to send messages to and receive messages from.</span>
     <span class='kw'>pub</span> <span class='ident'>peer_addr</span>: <span class='ident'>SocketAddr</span>,
 }
+
+
 
 <span class='kw'>impl</span> <span class='ident'>PunchedUdpSocket</span> {
     <span class='doccomment'>/// Punch a udp socket using a mapped socket and the peer&#39;s rendezvous info.</span>
@@ -436,16 +372,144 @@
         <span class='kw'>let</span> <span class='ident'>our_secret</span>
             <span class='op'>=</span> <span class='ident'>rendezvous_info</span>::<span class='ident'>get_priv_secret</span>(<span class='ident'>our_priv_rendezvous_info</span>);
 
-        <span class='kw'>for</span> <span class='ident'>endpoint</span> <span class='kw'>in</span> <span class='ident'>endpoints</span> {
-            <span class='kw'>let</span> <span class='ident'>addr</span> <span class='op'>=</span> <span class='ident'>endpoint</span>.<span class='ident'>addr</span>;
-            <span class='kw'>let</span> (<span class='ident'>s</span>, <span class='ident'>r</span>) <span class='op'>=</span> <span class='ident'>blocking_udp_punch_hole</span>(<span class='ident'>socket</span>, <span class='ident'>our_secret</span>.<span class='ident'>clone</span>(),
-                                                 <span class='ident'>their_secret</span>.<span class='ident'>clone</span>(), <span class='ident'>addr</span>);
-            <span class='ident'>socket</span> <span class='op'>=</span> <span class='ident'>s</span>;
-            <span class='kw'>if</span> <span class='kw'>let</span> <span class='prelude-val'>Ok</span>(<span class='ident'>peer_addr</span>) <span class='op'>=</span> <span class='ident'>r</span> {
-                <span class='kw'>return</span> <span class='prelude-val'>Ok</span>(<span class='ident'>PunchedUdpSocket</span> {
-                    <span class='ident'>socket</span>: <span class='ident'>socket</span>,
-                    <span class='ident'>peer_addr</span>: <span class='ident'>peer_addr</span>
-                });
+        <span class='comment'>// Cbor seems to serialize into bytes of different sizes and</span>
+        <span class='comment'>// it sometimes exceeded 16 bytes, let&#39;s be safe and use 128.</span>
+        <span class='kw'>const</span> <span class='ident'>MAX_DATAGRAM_SIZE</span>: <span class='ident'>usize</span> <span class='op'>=</span> <span class='number'>128</span>;
+
+        <span class='kw'>let</span> <span class='ident'>send_data</span> <span class='op'>=</span> {
+            <span class='kw'>let</span> <span class='ident'>hole_punch</span> <span class='op'>=</span> <span class='ident'>HolePunch</span> {
+                <span class='ident'>secret</span>: <span class='ident'>our_secret</span>,
+                <span class='ident'>ack</span>: <span class='boolval'>false</span>,
+            };
+            <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>enc</span> <span class='op'>=</span> ::<span class='ident'>cbor</span>::<span class='ident'>Encoder</span>::<span class='ident'>from_memory</span>();
+            <span class='ident'>enc</span>.<span class='ident'>encode</span>(::<span class='ident'>std</span>::<span class='ident'>iter</span>::<span class='ident'>once</span>(<span class='kw-2'>&amp;</span><span class='ident'>hole_punch</span>)).<span class='ident'>unwrap</span>();
+            <span class='ident'>enc</span>.<span class='ident'>into_bytes</span>()
+        };
+
+        <span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>send_data</span>.<span class='ident'>len</span>() <span class='op'>&lt;=</span> <span class='ident'>MAX_DATAGRAM_SIZE</span>,
+                <span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;Data exceed MAX_DATAGRAM_SIZE in blocking_udp_punch_hole: {} &gt; {}&quot;</span>,
+                        <span class='ident'>send_data</span>.<span class='ident'>len</span>(),
+                        <span class='ident'>MAX_DATAGRAM_SIZE</span>));
+
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>recv_data</span> <span class='op'>=</span> [<span class='number'>0u8</span>; <span class='ident'>MAX_DATAGRAM_SIZE</span>];
+
+        <span class='comment'>// TODO(canndrew): Have a hard think about whether this is the best possible algorithm for</span>
+        <span class='comment'>// doing this.</span>
+        <span class='comment'>//</span>
+        <span class='comment'>// As far as I can see, the desired properties are:</span>
+        <span class='comment'>//  (a) We shouldn&#39;t read from the socket if the peer might have already returned their</span>
+        <span class='comment'>//      socket to the caller and started sending us real data. Otherwise we have to either.</span>
+        <span class='comment'>//      drop that data or return it in the PunchedUdpSocket struct.</span>
+        <span class='comment'>//  (b) We should only return the socket once there are no more hole-punch messages to</span>
+        <span class='comment'>//      receive. Otherwise the caller will start reading from the socket and find crap on the wire.</span>
+        <span class='comment'>//  (c) We should try to return as soon as possible after establishing a connection.</span>
+        <span class='comment'>//  (d) We should account for the fact that UDP is unreliable by resending messages.</span>
+        <span class='comment'>//</span>
+        <span class='comment'>// The problem is none of these requirements are possible to fulfill 100% of the time and</span>
+        <span class='comment'>// they all conflict with each other. So we need to decide how bad these problems are</span>
+        <span class='comment'>// relative to each other. In the case of (a) sending back data inside PunchedUdpSocket</span>
+        <span class='comment'>// wouldn&#39;t be the end of the world but it would be pretty annoying for the user as they&#39;d</span>
+        <span class='comment'>// need to process that data and couldn&#39;t just start using their socket whereever it&#39;s</span>
+        <span class='comment'>// needed. Applications that use UDP should account for the fact that data can dissapear</span>
+        <span class='comment'>// anyway but it might be problematic for some apps if the very first chunk of data very</span>
+        <span class='comment'>// often dissapears. In the case of (b) applications need to account for the fact that</span>
+        <span class='comment'>// random data can sometimes appear on a UDP socket but they&#39;re probably not expecting to</span>
+        <span class='comment'>// get random data from the peer they&#39;re talking to. We should at the very least make sure</span>
+        <span class='comment'>// our hole punch packets are easily recognizable and give the user a facility to identify</span>
+        <span class='comment'>// them and throw them away. (c) is important but it conflicts with (b) and (d). In the</span>
+        <span class='comment'>// case of (d) it would helpful to have some idea of the probability of a given packet</span>
+        <span class='comment'>// being lost and balance that against (c).</span>
+        <span class='comment'>//</span>
+        <span class='comment'>// Assuming we successfully punch a hole there&#39;s four ways this can happen: (0) we get one</span>
+        <span class='comment'>// of their hole punching messages and it&#39;s from an address we were sending to. In this</span>
+        <span class='comment'>// case they likely got our hole punch message(s) aswell although it&#39;s possible the packet</span>
+        <span class='comment'>// got dropped. (1) We get one of their hole punching messages from an address that we</span>
+        <span class='comment'>// weren&#39;t sending to. In this case they haven&#39;t received any of our messages and we&#39;ll</span>
+        <span class='comment'>// definitely need to send an ack to their address. (2) We receive an ack to one of our</span>
+        <span class='comment'>// messages and it&#39;s from an address we weren&#39;t sending to. I don&#39;t think this should ever</span>
+        <span class='comment'>// happen. (3) We receive an ack to one of our packets and it&#39;s from an address we were</span>
+        <span class='comment'>// sending to. In this case they likely initially didn&#39;t have an address they could contact</span>
+        <span class='comment'>// us on.</span>
+        <span class='comment'>//</span>
+        <span class='comment'>// For now we keep the algorithm simple: If we get a hole punch message we send back two</span>
+        <span class='comment'>// acks with a delay in between before returning. If we get an ack we return immediately.</span>
+
+        <span class='comment'>// Spend TOTAL_TIMEOUT_MS trying to get their actual address that we can</span>
+        <span class='comment'>// communicate with.</span>
+
+        <span class='kw'>const</span> <span class='ident'>DELAY_BETWEEN_RESENDS_MS</span>: <span class='ident'>i64</span> <span class='op'>=</span> <span class='number'>600</span>;
+        <span class='kw'>const</span> <span class='ident'>TOTAL_TIMEOUT_MS</span>: <span class='ident'>i64</span> <span class='op'>=</span> <span class='number'>3000</span>;
+
+        <span class='kw'>let</span> <span class='ident'>start_time</span> <span class='op'>=</span> <span class='ident'>time</span>::<span class='ident'>SteadyTime</span>::<span class='ident'>now</span>();
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>deadline</span> <span class='op'>=</span> <span class='ident'>start_time</span>;
+        <span class='kw'>let</span> <span class='ident'>total_deadline</span> <span class='op'>=</span> <span class='ident'>start_time</span> <span class='op'>+</span> <span class='ident'>time</span>::<span class='ident'>Duration</span>::<span class='ident'>milliseconds</span>(<span class='ident'>TOTAL_TIMEOUT_MS</span>);
+        <span class='kw'>while</span> <span class='ident'>deadline</span> <span class='op'>&lt;</span> <span class='ident'>total_deadline</span> {
+            <span class='ident'>deadline</span> <span class='op'>=</span> <span class='ident'>deadline</span> <span class='op'>+</span> <span class='ident'>time</span>::<span class='ident'>Duration</span>::<span class='ident'>milliseconds</span>(<span class='ident'>DELAY_BETWEEN_RESENDS_MS</span>);
+            <span class='kw'>for</span> <span class='ident'>endpoint</span> <span class='kw'>in</span> <span class='kw-2'>&amp;</span><span class='ident'>endpoints</span> {
+                <span class='kw'>let</span> <span class='ident'>addr</span> <span class='op'>=</span> <span class='kw-2'>&amp;</span><span class='ident'>endpoint</span>.<span class='ident'>addr</span>;
+                <span class='comment'>// TODO(canndrew): How should we handle partial write?</span>
+                <span class='kw'>let</span> _ <span class='op'>=</span> <span class='kw'>match</span> <span class='ident'>socket</span>.<span class='ident'>send_to</span>(<span class='kw-2'>&amp;</span><span class='ident'>send_data</span>[..], <span class='kw-2'>&amp;</span><span class='op'>*</span><span class='op'>*</span><span class='ident'>addr</span>) {
+                    <span class='prelude-val'>Ok</span>(<span class='ident'>n</span>) <span class='op'>=&gt;</span> <span class='ident'>n</span>,
+                    <span class='prelude-val'>Err</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>e</span>),
+                };
+            }
+            <span class='comment'>// Keep reading until it&#39;s time to send to all endpoints again.</span>
+            <span class='kw'>loop</span> {
+                <span class='kw'>let</span> (<span class='ident'>read_size</span>, <span class='ident'>addr</span>) <span class='op'>=</span> <span class='kw'>match</span> <span class='ident'>socket</span>.<span class='ident'>recv_until</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>recv_data</span>[..], <span class='ident'>deadline</span>) {
+                    <span class='prelude-val'>Ok</span>(<span class='prelude-val'>Some</span>(<span class='ident'>x</span>)) <span class='op'>=&gt;</span> <span class='ident'>x</span>,
+                    <span class='prelude-val'>Ok</span>(<span class='prelude-val'>None</span>) <span class='op'>=&gt;</span> <span class='kw'>break</span>,
+                    <span class='prelude-val'>Err</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>e</span>),
+                };
+                <span class='kw'>match</span> ::<span class='ident'>cbor</span>::<span class='ident'>Decoder</span>::<span class='ident'>from_reader</span>(<span class='kw-2'>&amp;</span><span class='ident'>recv_data</span>[..<span class='ident'>read_size</span>])
+                             .<span class='ident'>decode</span>::<span class='op'>&lt;</span><span class='ident'>HolePunch</span><span class='op'>&gt;</span>()
+                             .<span class='ident'>next</span>() {
+                    <span class='prelude-val'>Some</span>(<span class='prelude-val'>Ok</span>(<span class='kw-2'>ref</span> <span class='ident'>hp</span>)) <span class='op'>=&gt;</span> {
+                        <span class='kw'>if</span> <span class='ident'>hp</span>.<span class='ident'>secret</span> <span class='op'>==</span> <span class='ident'>our_secret</span> <span class='op'>&amp;&amp;</span> <span class='ident'>hp</span>.<span class='ident'>ack</span> {
+                            <span class='kw'>return</span> <span class='prelude-val'>Ok</span>(<span class='ident'>PunchedUdpSocket</span> {
+                                <span class='ident'>socket</span>: <span class='ident'>socket</span>,
+                                <span class='ident'>peer_addr</span>: <span class='ident'>addr</span>,
+                            });
+                        }
+                        <span class='kw'>if</span> <span class='ident'>hp</span>.<span class='ident'>secret</span> <span class='op'>==</span> <span class='ident'>their_secret</span> {
+                            <span class='kw'>let</span> <span class='ident'>send_data</span> <span class='op'>=</span> {
+                                <span class='kw'>let</span> <span class='ident'>hole_punch</span> <span class='op'>=</span> <span class='ident'>HolePunch</span> {
+                                    <span class='ident'>secret</span>: <span class='ident'>their_secret</span>,
+                                    <span class='ident'>ack</span>: <span class='boolval'>true</span>,
+                                };
+                                <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>enc</span> <span class='op'>=</span> ::<span class='ident'>cbor</span>::<span class='ident'>Encoder</span>::<span class='ident'>from_memory</span>();
+                                <span class='ident'>enc</span>.<span class='ident'>encode</span>(::<span class='ident'>std</span>::<span class='ident'>iter</span>::<span class='ident'>once</span>(<span class='kw-2'>&amp;</span><span class='ident'>hole_punch</span>)).<span class='ident'>unwrap</span>();
+                                <span class='ident'>enc</span>.<span class='ident'>into_bytes</span>()
+                            };
+
+                            <span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>send_data</span>.<span class='ident'>len</span>() <span class='op'>&lt;=</span> <span class='ident'>MAX_DATAGRAM_SIZE</span>,
+                                    <span class='macro'>format</span><span class='macro'>!</span>(<span class='string'>&quot;Data exceed MAX_DATAGRAM_SIZE in blocking_udp_punch_hole: {} &gt; {}&quot;</span>,
+                                            <span class='ident'>send_data</span>.<span class='ident'>len</span>(),
+                                            <span class='ident'>MAX_DATAGRAM_SIZE</span>));
+
+                            <span class='comment'>// TODO(canndrew): handle partial writes.</span>
+                            <span class='kw'>let</span> _ <span class='op'>=</span> <span class='kw'>match</span> <span class='ident'>socket</span>.<span class='ident'>send_to</span>(<span class='kw-2'>&amp;</span><span class='ident'>send_data</span>[..], <span class='kw-2'>&amp;</span><span class='op'>*</span><span class='ident'>addr</span>) {
+                                <span class='prelude-val'>Ok</span>(<span class='ident'>n</span>) <span class='op'>=&gt;</span> <span class='ident'>n</span>,
+                                <span class='prelude-val'>Err</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>e</span>),
+                            };
+                            <span class='ident'>thread</span>::<span class='ident'>sleep</span>(<span class='ident'>std</span>::<span class='ident'>time</span>::<span class='ident'>Duration</span>::<span class='ident'>from_millis</span>(<span class='number'>100</span>));
+                            <span class='kw'>let</span> _ <span class='op'>=</span> <span class='kw'>match</span> <span class='ident'>socket</span>.<span class='ident'>send_to</span>(<span class='kw-2'>&amp;</span><span class='ident'>send_data</span>[..], <span class='kw-2'>&amp;</span><span class='op'>*</span><span class='ident'>addr</span>) {
+                                <span class='prelude-val'>Ok</span>(<span class='ident'>n</span>) <span class='op'>=&gt;</span> <span class='ident'>n</span>,
+                                <span class='prelude-val'>Err</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>e</span>),
+                            };
+                            <span class='kw'>return</span> <span class='prelude-val'>Ok</span>(<span class='ident'>PunchedUdpSocket</span> {
+                                <span class='ident'>socket</span>: <span class='ident'>socket</span>,
+                                <span class='ident'>peer_addr</span>: <span class='ident'>addr</span>,
+                            });
+                        }
+                        <span class='kw'>else</span> {
+                            <span class='comment'>// TODO(canndrew): report this error</span>
+                        }
+                    }
+                    <span class='prelude-val'>Some</span>(<span class='prelude-val'>Err</span>(<span class='ident'>e</span>)) <span class='op'>=&gt;</span> {
+                        <span class='comment'>// TODO(canndrew): report this error</span>
+                    }
+                    <span class='prelude-val'>None</span> <span class='op'>=&gt;</span> (),
+                };
             }
         }
         <span class='prelude-val'>Err</span>(<span class='ident'>io</span>::<span class='ident'>Error</span>::<span class='ident'>new</span>(<span class='ident'>io</span>::<span class='ident'>ErrorKind</span>::<span class='ident'>TimedOut</span>,
