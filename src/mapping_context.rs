@@ -61,14 +61,18 @@ quick_error! {
     #[derive(Debug)]
     pub enum MappingContextNewError {
         /// Failed to list the local machine's network interfaces.
-        ListInterfaces { err:io::Error } {
+        ListInterfaces {
+            err:io::Error,
+        } {
             description("Failed to list the local machine's network interfaces")
             display("Failed to list the local machines's network interfaces \
                      get_if_addrs returned an error: {}", err)
             cause(err)
         }
         /// Failed to spawn a thread.
-        SpawnThread { err: io::Error } {
+        SpawnThread {
+            err: io::Error
+        } {
             description("Failed to spawn a thread")
             display("Failed to spawn a thread. \
                      thread::spawn returned an error: {}", err)
@@ -80,6 +84,8 @@ quick_error! {
 quick_error! {
     #[derive(Debug)]
     pub enum MappingContextNewWarning {
+        /// Error finding IGD gateway. `if_name` and `if_addr` indicate the network interface being
+        /// searched from when this error was raised.
         SearchGateway {
             if_name: String,
             if_addr: Ipv4Addr,

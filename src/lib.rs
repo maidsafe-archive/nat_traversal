@@ -43,6 +43,10 @@
 
 #![allow(unused, unused_extern_crates)]
 
+// TODO(canndrew): Remove this once this: https://github.com/tailhook/quick-error/issues/18
+// is fixed.
+#![allow(missing_docs)]
+
 extern crate cbor;
 #[macro_use]
 extern crate log;
@@ -64,15 +68,16 @@ extern crate ip;
 #[macro_use]
 extern crate quick_error;
 
-pub use mapping_context::MappingContext;
+pub use mapping_context::{MappingContext, MappingContextNewError, MappingContextNewWarning};
 pub use hole_punch_server_addr::HolePunchServerAddr;
 pub use mapped_socket_addr::MappedSocketAddr;
 pub use rendezvous_info::{PrivRendezvousInfo, PubRendezvousInfo,
                          gen_rendezvous_info};
-pub use mapped_udp_socket::MappedUdpSocket;
+pub use mapped_udp_socket::{MappedUdpSocket, MappedUdpSocketMapError,
+                            MappedUdpSocketMapWarning, MappedUdpSocketNewError};
 pub use punched_udp_socket::PunchedUdpSocket;
 pub use mapped_tcp_socket::{MappedTcpSocket, tcp_punch_hole};
-pub use simple_udp_hole_punch_server::SimpleUdpHolePunchServer;
+pub use simple_udp_hole_punch_server::{SimpleUdpHolePunchServer, SimpleUdpHolePunchServerNewError};
 
 mod mapping_context;
 mod hole_punch_server_addr;

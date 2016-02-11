@@ -54,7 +54,9 @@ quick_error! {
     #[derive(Debug)]
     pub enum MappedUdpSocketMapError {
         /// Error getting the local address of the socket.
-        SocketLocalAddr { err: io::Error } {
+        SocketLocalAddr {
+            err: io::Error
+        } {
             description("Error getting local address of socket \
                          (have you called bind() on the socket?)")
             display("Error getting local address of socket. \
@@ -64,13 +66,17 @@ quick_error! {
             cause(err)
         }
         /// IO error receiving data on the socket.
-        RecvError { err: io::Error } {
+        RecvError {
+            err: io::Error
+        } {
             description("IO error receiving data on socket")
             display("IO error receiving data on socket: {}", err)
             cause(err)
         }
         /// IO error sending data on the socket.
-        SendError { err: io::Error } {
+        SendError {
+            err: io::Error
+        } {
             description("IO error sending data on socket")
             display("IO error sending data on socket: {}", err)
             cause(err)
@@ -83,14 +89,17 @@ quick_error! {
     #[derive(Debug)]
     pub enum MappedUdpSocketMapWarning {
         /// Error searching for IGD gateway
-        FindGateway { err: igd::SearchError } {
+        FindGateway {
+            err: igd::SearchError
+        } {
             description("Error searching for IGD gateway")
             display("Error searching for IGD gateway. \
                      igd::search_gateway_from_timeout returned an error: {}",
                      err)
             cause(err)
         }
-        /// Error mapping external address and port through IGD gateway
+        /// Error mapping external address and port through IGD gateway. `gateway_addr` is the
+        /// address of the IGD gateway that we requested a port mapping from.
         GetExternalPort {
             gateway_addr: net::SocketAddrV4,
             err: igd::AddAnyPortError,
@@ -110,14 +119,18 @@ quick_error! {
     #[derive(Debug)]
     pub enum MappedUdpSocketNewError {
         /// Error creating new udp socket bound to 0.0.0.0:0
-        CreateSocket { err: io::Error } {
+        CreateSocket {
+            err: io::Error
+        } {
             description("Error creating a new udp socket bound to 0.0.0.0:0")
             display("Error creating a new udp socket bound to 0.0.0.0:0. \
                      UdpSocket::bind returned an IO error: {}", err)
             cause(err)
         }
         /// Error mapping udp socket.
-        MapSocket { err: MappedUdpSocketMapError } {
+        MapSocket {
+            err: MappedUdpSocketMapError
+        } {
             description("Error mapping udp socket")
             display("Error mapping udp socket. MappedUdpSocket::map returned \
                      an error: {}", err)
