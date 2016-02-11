@@ -23,7 +23,7 @@ use rand;
 use mapped_socket_addr::MappedSocketAddr;
 
 /// Info exchanged by both parties before performing a rendezvous connection.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct PubRendezvousInfo {
     /// A vector of all the mapped addresses that the peer can try connecting to.
     endpoints: Vec<MappedSocketAddr>,
@@ -32,7 +32,7 @@ pub struct PubRendezvousInfo {
 }
 
 /// The local half of a `PubRendezvousInfo`.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PrivRendezvousInfo {
     secret: [u8; 4],
 }
