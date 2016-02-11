@@ -55,13 +55,16 @@ quick_error! {
     /// Errors returned by SimpleUdpHolePunchServer::new
     pub enum SimpleUdpHolePunchServerNewError {
         /// Error creating a mapped udp socket to listen on.
-        CreateMappedSocket { err: MappedUdpSocketNewError } {
+        CreateMappedSocket {
+            err: MappedUdpSocketNewError } {
             description("Error creating a mapped udp socket to listen on.")
             display("Error creating a mapped udp socket to listen on: {}", err)
             cause(err)
         }
         /// Error setting the timeout on the server's listening socket.
-        SetSocketTimeout { err: io::Error } {
+        SetSocketTimeout {
+            err: io::Error
+        } {
             description("Error setting the timeout on the server's listening socket.")
             display("Error setting the timeout on the server's listening socket: {}.", err)
             cause(err)
