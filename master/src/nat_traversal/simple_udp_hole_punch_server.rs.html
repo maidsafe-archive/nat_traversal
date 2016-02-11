@@ -214,6 +214,9 @@
 <span id="171">171</span>
 <span id="172">172</span>
 <span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
 </pre><pre class='rust '>
 <span class='comment'>// Copyright 2016 MaidSafe.net limited.</span>
 <span class='comment'>//</span>
@@ -272,13 +275,16 @@
     <span class='doccomment'>/// Errors returned by SimpleUdpHolePunchServer::new</span>
     <span class='kw'>pub</span> <span class='kw'>enum</span> <span class='ident'>SimpleUdpHolePunchServerNewError</span> {
         <span class='doccomment'>/// Error creating a mapped udp socket to listen on.</span>
-        <span class='ident'>CreateMappedSocket</span> { <span class='ident'>err</span>: <span class='ident'>MappedUdpSocketNewError</span> } {
+        <span class='ident'>CreateMappedSocket</span> {
+            <span class='ident'>err</span>: <span class='ident'>MappedUdpSocketNewError</span> } {
             <span class='ident'>description</span>(<span class='string'>&quot;Error creating a mapped udp socket to listen on.&quot;</span>)
             <span class='ident'>display</span>(<span class='string'>&quot;Error creating a mapped udp socket to listen on: {}&quot;</span>, <span class='ident'>err</span>)
             <span class='ident'>cause</span>(<span class='ident'>err</span>)
         }
         <span class='doccomment'>/// Error setting the timeout on the server&#39;s listening socket.</span>
-        <span class='ident'>SetSocketTimeout</span> { <span class='ident'>err</span>: <span class='ident'>io</span>::<span class='ident'>Error</span> } {
+        <span class='ident'>SetSocketTimeout</span> {
+            <span class='ident'>err</span>: <span class='ident'>io</span>::<span class='ident'>Error</span>
+        } {
             <span class='ident'>description</span>(<span class='string'>&quot;Error setting the timeout on the server&#39;s listening socket.&quot;</span>)
             <span class='ident'>display</span>(<span class='string'>&quot;Error setting the timeout on the server&#39;s listening socket: {}.&quot;</span>, <span class='ident'>err</span>)
             <span class='ident'>cause</span>(<span class='ident'>err</span>)
