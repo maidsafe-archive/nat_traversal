@@ -27,7 +27,7 @@ use std::collections::HashSet;
 use igd;
 use time;
 use ip::{SocketAddrExt, IpAddr};
-use maidsafe_utilities::serialisation::{deserialise, serialise};
+use maidsafe_utilities::serialisation::deserialise;
 use socket_addr::SocketAddr;
 use w_result::{WResult, WOk, WErr};
 

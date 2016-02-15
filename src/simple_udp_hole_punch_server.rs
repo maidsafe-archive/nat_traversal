@@ -19,13 +19,12 @@
 //! NAT traversal utilities.
 
 use std::io;
-use std::net;
 use std::net::UdpSocket;
 use std::time::Duration;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use maidsafe_utilities::serialisation::{deserialise, serialise};
+use maidsafe_utilities::serialisation::serialise;
 use maidsafe_utilities::thread::RaiiThreadJoiner;
 use w_result::{WResult, WOk, WErr};
 
