@@ -19,35 +19,30 @@
 //! NAT traversal utilities.
 
 use std::io;
-use std::net;
 use std::net::UdpSocket;
 use std::time::Duration;
-use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use get_if_addrs;
-use maidsafe_utilities::serialisation::{deserialise, serialise};
+use maidsafe_utilities::serialisation::serialise;
 use maidsafe_utilities::thread::RaiiThreadJoiner;
-use rand;
-use sodiumoxide::crypto::sign::PublicKey;
 use w_result::{WResult, WOk, WErr};
 
 use socket_addr::SocketAddr;
 use listener_message;
 
 use mapping_context::MappingContext;
-use mapped_socket_addr::MappedSocketAddr;
 use mapped_udp_socket::{MappedUdpSocket, MappedUdpSocketNewError, MappedUdpSocketMapWarning};
 
 const UDP_READ_TIMEOUT_SECS: u64 = 2;
 
 /// RAII type for a hole punch server which speaks the simple hole punching protocol.
 pub struct SimpleUdpHolePunchServer<'a> {
-    mapping_context: &'a MappingContext,
+    // TODO(canndrew): Use this to refresh our external addrs.
+    _mapping_context: &'a MappingContext,
     stop_flag: Arc<AtomicBool>,
     _raii_joiner: RaiiThreadJoiner,
-    known_endpoints: Vec<MappedSocketAddr>,
+    known_endpoints: Vec<SocketAddr>,
 }
 
 quick_error! {
@@ -102,11 +97,17 @@ impl<'a> SimpleUdpHolePunchServer<'a> {
             Self::run(udp_socket, cloned_stop_flag);
         }));
 
+        let unrestricted_endpoints = mapped_socket.endpoints.into_iter().filter_map(|msa| {
+            match msa.nat_restricted {
+                false => Some(msa.addr),
+                true => None,
+            }
+        }).collect();
         WOk(SimpleUdpHolePunchServer {
-            mapping_context: mapping_context,
+            _mapping_context: mapping_context,
             stop_flag: stop_flag,
             _raii_joiner: raii_joiner,
-            known_endpoints: mapped_socket.endpoints,
+            known_endpoints: unrestricted_endpoints,
         }, warnings)
     }
 
@@ -131,17 +132,7 @@ impl<'a> SimpleUdpHolePunchServer<'a> {
     }
 
     /// Get the external addresses of this server to be shared with peers.
-    pub fn addresses(&self) -> Vec<MappedSocketAddr> {
-        // TODO:
-
-        // The idea was it would need to know it's own external IP and whether
-        // it has an open port or not.  And it might occasionally need to make
-        // sure its port is still mapped. ie still open on the router
-
-        // So it wants to find external ports with `nat_restricted ==
-        // false`. Those are the only ones worth sharing with other peers. it
-        // can get those by doing upnp for example
-
+    pub fn addresses(&self) -> Vec<SocketAddr> {
         self.known_endpoints.clone()
     }
 }
