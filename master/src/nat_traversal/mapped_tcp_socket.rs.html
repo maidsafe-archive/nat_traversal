@@ -145,22 +145,22 @@
     <span class='doccomment'>/// Map an existing tcp socket. The socket must not bound or connected. This</span>
     <span class='doccomment'>/// function will set the options to make the socket address reuseable</span>
     <span class='doccomment'>/// before binding it.</span>
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>map</span>(<span class='ident'>socket</span>: <span class='ident'>net2</span>::<span class='ident'>TcpBuilder</span>, <span class='ident'>mc</span>: <span class='kw-2'>&amp;</span><span class='ident'>MappingContext</span>)
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>map</span>(<span class='ident'>_socket</span>: <span class='ident'>net2</span>::<span class='ident'>TcpBuilder</span>, <span class='ident'>_mc</span>: <span class='kw-2'>&amp;</span><span class='ident'>MappingContext</span>)
                <span class='op'>-&gt;</span> <span class='ident'>MappedTcpSocket</span> {
         <span class='macro'>unimplemented</span><span class='macro'>!</span>();
     }
 
     <span class='doccomment'>/// Create a new `MappedTcpSocket`</span>
-    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span>(<span class='ident'>mc</span>: <span class='kw-2'>&amp;</span><span class='ident'>MappingContext</span>) <span class='op'>-&gt;</span> <span class='ident'>MappedTcpSocket</span> {
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span>(<span class='ident'>_mc</span>: <span class='kw-2'>&amp;</span><span class='ident'>MappingContext</span>) <span class='op'>-&gt;</span> <span class='ident'>MappedTcpSocket</span> {
         <span class='macro'>unimplemented</span><span class='macro'>!</span>();
     }
 }
 
 <span class='doccomment'>/// Perform a tcp rendezvous connect. `socket` should have been obtained from a</span>
 <span class='doccomment'>/// `MappedTcpSocket`.</span>
-<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>tcp_punch_hole</span>(<span class='ident'>socket</span>: <span class='ident'>net2</span>::<span class='ident'>TcpBuilder</span>,
-                      <span class='ident'>our_priv_rendezvous_info</span>: <span class='ident'>PrivRendezvousInfo</span>,
-                      <span class='ident'>their_pub_rendezvous_info</span>: <span class='ident'>PubRendezvousInfo</span>)
+<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>tcp_punch_hole</span>(<span class='ident'>_socket</span>: <span class='ident'>net2</span>::<span class='ident'>TcpBuilder</span>,
+                      <span class='ident'>_our_priv_rendezvous_info</span>: <span class='ident'>PrivRendezvousInfo</span>,
+                      <span class='ident'>_their_pub_rendezvous_info</span>: <span class='ident'>PubRendezvousInfo</span>)
                       <span class='op'>-&gt;</span> <span class='ident'>TcpStream</span> {
     <span class='macro'>unimplemented</span><span class='macro'>!</span>();
 }
