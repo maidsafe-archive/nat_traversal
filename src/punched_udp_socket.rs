@@ -31,6 +31,7 @@ use w_result::{WResult, WOk, WErr};
 use rendezvous_info::{PrivRendezvousInfo, PubRendezvousInfo};
 use rendezvous_info;
 use socket_utils::RecvUntil;
+use mapped_socket_addr::MappedSocketAddr;
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 struct HolePunch {
@@ -79,6 +80,15 @@ quick_error! {
                      cbor decoding produced the error: {}", err)
             cause(err)
         }
+        /// There was an IO error trying to send a message to one of the peer's potential endpoints.
+        MsgEndpoint {
+            endpoint: MappedSocketAddr,
+            err: io::Error,
+        } {
+            description("IO error trying to send a message to one of the peer's potential endpoints.")
+            display("IO error trying to send a message to endpoint {:?}. {}", endpoint, err)
+            cause(err)
+        }
     }
 }
 
@@ -122,7 +132,7 @@ impl PunchedUdpSocket {
     {
         let mut warnings = Vec::new();
 
-        let (endpoints, their_secret)
+        let (mut endpoints, their_secret)
             = rendezvous_info::decompose(their_pub_rendezvous_info);
         let our_secret
             = rendezvous_info::get_priv_secret(our_priv_rendezvous_info);
@@ -200,13 +210,20 @@ impl PunchedUdpSocket {
         let total_deadline = start_time + time::Duration::milliseconds(TOTAL_TIMEOUT_MS);
         while deadline < total_deadline {
             deadline = deadline + time::Duration::milliseconds(DELAY_BETWEEN_RESENDS_MS);
-            for endpoint in &endpoints {
-                let addr = &endpoint.addr;
+            let mut i = 0;
+            while i < endpoints.len() {
                 // TODO(canndrew): How should we handle partial write?
-                let _ = match socket.send_to(&send_data[..], &**addr) {
+                let _ = match socket.send_to(&send_data[..], &*endpoints[i].addr) {
                     Ok(n) => n,
-                    Err(e) => return WErr(UdpPunchHoleError::Io { err: e }),
+                    Err(e) => {
+                        warnings.push(UdpPunchHoleWarning::MsgEndpoint {
+                            endpoint: endpoints.swap_remove(i),
+                            err: e,
+                        });
+                        continue;
+                    }
                 };
+                i += 1;
             }
             // Keep reading until it's time to send to all endpoints again.
             loop {
