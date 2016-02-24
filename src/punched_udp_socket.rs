@@ -108,6 +108,10 @@ quick_error! {
             display("IO error when using socket: {}", err)
             cause(err)
         }
+        SendCompleteAck {
+            description("Error sending ACK to peer. Kept getting partial writes.")
+            display("Error sending ACK to peer. Kept getting partial writes.")
+        }
     }
 }
 
@@ -115,10 +119,12 @@ impl From<UdpPunchHoleError> for io::Error {
     fn from(err: UdpPunchHoleError) -> io::Error {
         match err {
             UdpPunchHoleError::TimedOut => io::Error::new(io::ErrorKind::TimedOut,
-                                                          "Udp hole punching timed out \
-                                                           waiting for a response from \
-                                                           the peer"),
+                                                          "Udp hole punching timed out waiting \
+                                                           for a response from the peer"),
             UdpPunchHoleError::Io { err } => err,
+            UdpPunchHoleError::SendCompleteAck => io::Error::new(io::ErrorKind::Other,
+                                                                 "Error sending ACK to peer. Kept \
+                                                                  getting partial writes."),
         }
     }
 }
@@ -258,20 +264,41 @@ impl PunchedUdpSocket {
                                             send_data.len(),
                                             MAX_DATAGRAM_SIZE));
 
-                            // TODO(canndrew): handle partial writes.
-                            let _ = match socket.send_to(&send_data[..], &*addr) {
-                                Ok(n) => n,
-                                Err(e) => return WErr(UdpPunchHoleError::Io { err: e }),
-                            };
-                            thread::sleep(std::time::Duration::from_millis(100));
-                            let _ = match socket.send_to(&send_data[..], &*addr) {
-                                Ok(n) => n,
-                                Err(e) => return WErr(UdpPunchHoleError::Io { err: e }),
-                            };
-                            return WOk(PunchedUdpSocket {
-                                socket: socket,
-                                peer_addr: addr,
-                            }, warnings);
+                            let mut attempts = 0;
+                            let mut successful_attempts = 0;
+                            let mut error = None;
+                            while attempts < 2 || time::SteadyTime::now() < total_deadline {
+                                attempts += 1;
+                                match socket.send_to(&send_data[..], &*addr) {
+                                    Ok(n) => {
+                                        if n == send_data.len() {
+                                            successful_attempts += 1;
+                                            if successful_attempts == 2 {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        if error.is_none() {
+                                            error = Some(e);
+                                        }
+                                    }
+                                };
+                                thread::sleep(std::time::Duration::from_millis(100));
+                            }
+                            if successful_attempts == 0 {
+                                let ret = match error {
+                                    Some(e) => UdpPunchHoleError::Io { err: e },
+                                    None => UdpPunchHoleError::SendCompleteAck,
+                                };
+                                return WErr(ret);
+                            }
+                            else {
+                                return WOk(PunchedUdpSocket {
+                                    socket: socket,
+                                    peer_addr: addr,
+                                }, warnings);
+                            }
                         }
                         // Protect against a malicious peer sending us loads of spurious data.
                         if warnings.len() < 10 {
