@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-88ac128001ac3a9a/regex-0.1.52/src/dfa.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-88ac128001ac3a9a/regex-0.1.54/src/dfa.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>dfa.rs.html -- source</title>
@@ -1205,6 +1205,32 @@
 <span id="1162">1162</span>
 <span id="1163">1163</span>
 <span id="1164">1164</span>
+<span id="1165">1165</span>
+<span id="1166">1166</span>
+<span id="1167">1167</span>
+<span id="1168">1168</span>
+<span id="1169">1169</span>
+<span id="1170">1170</span>
+<span id="1171">1171</span>
+<span id="1172">1172</span>
+<span id="1173">1173</span>
+<span id="1174">1174</span>
+<span id="1175">1175</span>
+<span id="1176">1176</span>
+<span id="1177">1177</span>
+<span id="1178">1178</span>
+<span id="1179">1179</span>
+<span id="1180">1180</span>
+<span id="1181">1181</span>
+<span id="1182">1182</span>
+<span id="1183">1183</span>
+<span id="1184">1184</span>
+<span id="1185">1185</span>
+<span id="1186">1186</span>
+<span id="1187">1187</span>
+<span id="1188">1188</span>
+<span id="1189">1189</span>
+<span id="1190">1190</span>
 </pre><pre class='rust '>
 <span class='comment'>// Copyright 2014-2016 The Rust Project Developers. See the COPYRIGHT</span>
 <span class='comment'>// file at the top-level directory of this distribution and at</span>
@@ -1253,8 +1279,8 @@ implementation.)
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>fmt</span>;
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>mem</span>;
 
-<span class='kw'>use</span> <span class='ident'>inst</span>::{<span class='ident'>Insts</span>, <span class='ident'>Inst</span>};
-<span class='kw'>use</span> <span class='ident'>program</span>::<span class='ident'>Program</span>;
+<span class='kw'>use</span> <span class='ident'>exec</span>::<span class='ident'>Search</span>;
+<span class='kw'>use</span> <span class='ident'>prog</span>::{<span class='ident'>Inst</span>, <span class='ident'>Program</span>};
 <span class='kw'>use</span> <span class='ident'>sparse</span>::<span class='ident'>SparseSet</span>;
 
 <span class='doccomment'>/// The cache limit specifies approximately how much space we&#39;re willing to</span>
@@ -1278,8 +1304,9 @@ implementation.)
 <span class='doccomment'>/// Generally, a DFA is possible only when there are no word boundary</span>
 <span class='doccomment'>/// assertions. This is due to the difficulty (but likely not impossibility)</span>
 <span class='doccomment'>/// of tracking multi-byte assertions in the DFA.</span>
-<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>can_exec</span>(<span class='ident'>insts</span>: <span class='kw-2'>&amp;</span><span class='ident'>Insts</span>) <span class='op'>-&gt;</span> <span class='ident'>bool</span> {
-    <span class='kw'>use</span> <span class='ident'>inst</span>::<span class='ident'>EmptyLook</span>::<span class='op'>*</span>;
+<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>can_exec</span>(<span class='ident'>insts</span>: <span class='kw-2'>&amp;</span><span class='ident'>Program</span>) <span class='op'>-&gt;</span> <span class='ident'>bool</span> {
+    <span class='kw'>use</span> <span class='ident'>prog</span>::<span class='ident'>Inst</span>::<span class='op'>*</span>;
+    <span class='kw'>use</span> <span class='ident'>prog</span>::<span class='ident'>EmptyLook</span>::<span class='op'>*</span>;
     <span class='comment'>// If for some reason we manage to allocate a regex program with more</span>
     <span class='comment'>// than 2^32-1 instructions, then we can&#39;t execute the DFA because we</span>
     <span class='comment'>// use 32 bit pointers.</span>
@@ -1288,35 +1315,17 @@ implementation.)
     }
     <span class='kw'>for</span> <span class='ident'>inst</span> <span class='kw'>in</span> <span class='ident'>insts</span> {
         <span class='kw'>match</span> <span class='op'>*</span><span class='ident'>inst</span> {
-            <span class='ident'>Inst</span>::<span class='ident'>Char</span>(_) <span class='op'>|</span> <span class='ident'>Inst</span>::<span class='ident'>Ranges</span>(_) <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='boolval'>false</span>,
-            <span class='ident'>Inst</span>::<span class='ident'>EmptyLook</span>(<span class='kw-2'>ref</span> <span class='ident'>inst</span>) <span class='op'>=&gt;</span> {
+            <span class='ident'>Char</span>(_) <span class='op'>|</span> <span class='ident'>Ranges</span>(_) <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='boolval'>false</span>,
+            <span class='ident'>EmptyLook</span>(<span class='kw-2'>ref</span> <span class='ident'>inst</span>) <span class='op'>=&gt;</span> {
                 <span class='kw'>match</span> <span class='ident'>inst</span>.<span class='ident'>look</span> {
                     <span class='ident'>WordBoundary</span> <span class='op'>|</span> <span class='ident'>NotWordBoundary</span> <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='boolval'>false</span>,
                     <span class='ident'>StartLine</span> <span class='op'>|</span> <span class='ident'>EndLine</span> <span class='op'>|</span> <span class='ident'>StartText</span> <span class='op'>|</span> <span class='ident'>EndText</span> <span class='op'>=&gt;</span> {}
                 }
             }
-            <span class='ident'>Inst</span>::<span class='ident'>Match</span> <span class='op'>|</span> <span class='ident'>Inst</span>::<span class='ident'>Save</span>(_) <span class='op'>|</span> <span class='ident'>Inst</span>::<span class='ident'>Split</span>(_) <span class='op'>|</span> <span class='ident'>Inst</span>::<span class='ident'>Bytes</span>(_) <span class='op'>=&gt;</span> {}
+            <span class='ident'>Match</span>(_) <span class='op'>|</span> <span class='ident'>Save</span>(_) <span class='op'>|</span> <span class='ident'>Split</span>(_) <span class='op'>|</span> <span class='ident'>Bytes</span>(_) <span class='op'>=&gt;</span> {}
         }
     }
     <span class='boolval'>true</span>
-}
-
-<span class='doccomment'>/// The result of running the DFA.</span>
-<span class='doccomment'>///</span>
-<span class='doccomment'>/// Conceptually, this is essentially equivalent to an `Option&lt;usize&gt;`, where</span>
-<span class='doccomment'>/// the value indicates where the end of a match was found, if any. We split</span>
-<span class='doccomment'>/// this out into a third state called EarlyMatch, which indicates both that</span>
-<span class='doccomment'>/// the caller specified that they didn&#39;t care about *where* a match was found,</span>
-<span class='doccomment'>/// and that the position at which the earliest match occurred may not be the</span>
-<span class='doccomment'>/// correct leftmost-first ending match position.</span>
-<span class='doccomment'>///</span>
-<span class='doccomment'>/// NoMatch indicates that no match will ever be found and that processing can</span>
-<span class='doccomment'>/// quit immediately.</span>
-<span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Clone</span>, <span class='ident'>Copy</span>, <span class='ident'>Debug</span>, <span class='ident'>Eq</span>, <span class='ident'>Hash</span>, <span class='ident'>PartialEq</span>)]</span>
-<span class='kw'>pub</span> <span class='kw'>enum</span> <span class='ident'>DfaResult</span> {
-    <span class='ident'>Match</span>(<span class='ident'>usize</span>),
-    <span class='ident'>EarlyMatch</span>,
-    <span class='ident'>NoMatch</span>,
 }
 
 <span class='doccomment'>/// A reusable cache of DFA states.</span>
@@ -1377,7 +1386,7 @@ implementation.)
 <span class='doccomment'>/// N.B. We only use a single lifetime here since all pointers are taken</span>
 <span class='doccomment'>/// from the same cache.</span>
 <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Debug</span>)]</span>
-<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Dfa</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span> {
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Dfa</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span>, <span class='lifetime'>&#39;b</span>, <span class='lifetime'>&#39;c</span>: <span class='lifetime'>&#39;b</span>, <span class='lifetime'>&#39;m</span>: <span class='lifetime'>&#39;b</span><span class='op'>&gt;</span> {
     <span class='doccomment'>/// prog contains the NFA instruction opcodes. DFA execution uses either</span>
     <span class='doccomment'>/// the `dfa` instructions or the `dfa_reverse` instructions from</span>
     <span class='doccomment'>/// `exec::Executor`. (It never uses `Executor.prog`, which may have</span>
@@ -1386,10 +1395,10 @@ implementation.)
     <span class='doccomment'>/// The start state. We record it here because the pointer may change</span>
     <span class='doccomment'>/// when the cache is wiped.</span>
     <span class='ident'>start</span>: <span class='ident'>StatePtr</span>,
-    <span class='doccomment'>/// When set, we can stop searching immediately after we enter a match</span>
-    <span class='doccomment'>/// state. (Normally we keep searching in order to provide leftmost-first</span>
-    <span class='doccomment'>/// semantics.)</span>
-    <span class='ident'>quit_on_first_match</span>: <span class='ident'>bool</span>,
+    <span class='doccomment'>/// The search configuration, which includes capture groups. It also</span>
+    <span class='doccomment'>/// includes space for indicating which regex matched if executing a</span>
+    <span class='doccomment'>/// regex set.</span>
+    <span class='ident'>search</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;b</span> <span class='kw-2'>mut</span> <span class='ident'>Search</span><span class='op'>&lt;</span><span class='lifetime'>&#39;c</span>, <span class='lifetime'>&#39;m</span><span class='op'>&gt;</span>,
     <span class='doccomment'>/// These are all from DfaCache. (Only {qcur,qnext} are missing.)</span>
     <span class='ident'>compiled</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='kw-2'>mut</span> <span class='ident'>HashMap</span><span class='op'>&lt;</span><span class='ident'>StateKey</span>, <span class='ident'>StatePtr</span><span class='op'>&gt;</span>,
     <span class='ident'>states</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='kw-2'>mut</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>State</span><span class='op'>&gt;</span>,
@@ -1513,7 +1522,7 @@ implementation.)
     }
 }
 
-<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span> <span class='ident'>Dfa</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span> {
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span>, <span class='lifetime'>&#39;b</span>, <span class='lifetime'>&#39;c</span>, <span class='lifetime'>&#39;m</span><span class='op'>&gt;</span> <span class='ident'>Dfa</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span>, <span class='lifetime'>&#39;b</span>, <span class='lifetime'>&#39;c</span>, <span class='lifetime'>&#39;m</span><span class='op'>&gt;</span> {
     <span class='doccomment'>/// The main entry point to executing a DFA, which returns the *end* of</span>
     <span class='doccomment'>/// a match if one exists, using Perl&#39;s &quot;leftmost-first&quot; semantics.</span>
     <span class='doccomment'>///</span>
@@ -1526,42 +1535,42 @@ implementation.)
     <span class='doccomment'>/// it may seem like we should omit `at` and just rely on the caller to</span>
     <span class='doccomment'>/// slice `text` appropriately, it is necessary to tell whether `at` is</span>
     <span class='doccomment'>/// at the beginning of `text` or not (i.e., for empty assertions).</span>
-    <span class='doccomment'>///</span>
-    <span class='doccomment'>/// quit_on_first_match should be set if the caller doesn&#39;t care about</span>
-    <span class='doccomment'>/// where the match ends. If a match is found, DfaResult::EarlyMatch is</span>
-    <span class='doccomment'>/// returned.</span>
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>exec</span>(
         <span class='ident'>prog</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>Program</span>,
+        <span class='ident'>search</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;b</span> <span class='kw-2'>mut</span> <span class='ident'>Search</span><span class='op'>&lt;</span><span class='lifetime'>&#39;c</span>, <span class='lifetime'>&#39;m</span><span class='op'>&gt;</span>,
         <span class='ident'>text</span>: <span class='kw-2'>&amp;</span>[<span class='ident'>u8</span>],
         <span class='ident'>at</span>: <span class='ident'>usize</span>,
-        <span class='ident'>quit_on_first_match</span>: <span class='ident'>bool</span>,
-    ) <span class='op'>-&gt;</span> <span class='ident'>DfaResult</span> {
+    ) <span class='op'>-&gt;</span> <span class='ident'>bool</span> {
         <span class='comment'>// Retrieve our DFA cache from the program. If another thread tries to</span>
         <span class='comment'>// execute this DFA *simultaneously*, then a new independent cache is</span>
         <span class='comment'>// created.</span>
         <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>_cache</span> <span class='op'>=</span> <span class='ident'>prog</span>.<span class='ident'>cache_dfa</span>();
         <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>cache</span> <span class='op'>=</span> <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='op'>*</span><span class='op'>*</span><span class='ident'>_cache</span>;
-        <span class='ident'>cache</span>.<span class='ident'>resize</span>(<span class='ident'>prog</span>.<span class='ident'>insts</span>.<span class='ident'>len</span>());
+        <span class='ident'>cache</span>.<span class='ident'>resize</span>(<span class='ident'>prog</span>.<span class='ident'>len</span>());
 
         <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>dfa</span> <span class='op'>=</span> <span class='ident'>Dfa</span> {
             <span class='ident'>prog</span>: <span class='ident'>prog</span>,
+            <span class='ident'>start</span>: <span class='number'>0</span>, <span class='comment'>// filled in below</span>
+            <span class='ident'>search</span>: <span class='ident'>search</span>,
             <span class='ident'>compiled</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>cache</span>.<span class='ident'>compiled</span>,
             <span class='ident'>states</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>cache</span>.<span class='ident'>states</span>,
             <span class='ident'>start_states</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>cache</span>.<span class='ident'>start_states</span>,
-            <span class='ident'>start</span>: <span class='number'>0</span>, <span class='comment'>// filled in below</span>
             <span class='ident'>stack</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>cache</span>.<span class='ident'>stack</span>,
-            <span class='ident'>quit_on_first_match</span>: <span class='ident'>quit_on_first_match</span>,
         };
         <span class='ident'>dfa</span>.<span class='ident'>start</span> <span class='op'>=</span> <span class='kw'>match</span> <span class='ident'>dfa</span>.<span class='ident'>start_state</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>cache</span>.<span class='ident'>qcur</span>, <span class='ident'>text</span>, <span class='ident'>at</span>) {
-            <span class='ident'>STATE_DEAD</span> <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='ident'>DfaResult</span>::<span class='ident'>NoMatch</span>,
+            <span class='ident'>STATE_DEAD</span> <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='boolval'>false</span>,
             <span class='ident'>si</span> <span class='op'>=&gt;</span> <span class='ident'>si</span>,
         };
         <span class='macro'>debug_assert</span><span class='macro'>!</span>(<span class='ident'>dfa</span>.<span class='ident'>start</span> <span class='op'>!=</span> <span class='ident'>STATE_UNKNOWN</span>);
-        <span class='kw'>if</span> <span class='ident'>prog</span>.<span class='ident'>insts</span>.<span class='ident'>is_reversed</span>() {
+        <span class='kw'>let</span> <span class='ident'>matched</span> <span class='op'>=</span> <span class='kw'>if</span> <span class='ident'>prog</span>.<span class='ident'>is_reverse</span> {
             <span class='ident'>dfa</span>.<span class='ident'>exec_at_reverse</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>cache</span>.<span class='ident'>qcur</span>, <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>cache</span>.<span class='ident'>qnext</span>, <span class='ident'>text</span>, <span class='ident'>at</span>)
         } <span class='kw'>else</span> {
             <span class='ident'>dfa</span>.<span class='ident'>exec_at</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>cache</span>.<span class='ident'>qcur</span>, <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>cache</span>.<span class='ident'>qnext</span>, <span class='ident'>text</span>, <span class='ident'>at</span>)
+        };
+        <span class='kw'>if</span> <span class='ident'>matched</span> <span class='op'>&amp;&amp;</span>  <span class='ident'>dfa</span>.<span class='ident'>search</span>.<span class='ident'>matches</span>.<span class='ident'>len</span>() <span class='op'>&lt;=</span> <span class='number'>1</span> {
+            <span class='ident'>dfa</span>.<span class='ident'>search</span>.<span class='ident'>set_match</span>(<span class='number'>0</span>);
         }
+        <span class='ident'>matched</span>
     }
 
     <span class='doccomment'>/// Executes the DFA on a forward NFA.</span>
@@ -1573,7 +1582,7 @@ implementation.)
         <span class='ident'>qnext</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>SparseSet</span>,
         <span class='ident'>text</span>: <span class='kw-2'>&amp;</span>[<span class='ident'>u8</span>],
         <span class='ident'>at</span>: <span class='ident'>usize</span>,
-    ) <span class='op'>-&gt;</span> <span class='ident'>DfaResult</span> {
+    ) <span class='op'>-&gt;</span> <span class='ident'>bool</span> {
         <span class='comment'>// For the most part, the DFA is basically:</span>
         <span class='comment'>//</span>
         <span class='comment'>//   last_match = null</span>
@@ -1602,22 +1611,22 @@ implementation.)
         <span class='comment'>//   6. We can&#39;t actually do state.next[byte]. Instead, we have to do</span>
         <span class='comment'>//      state.next[byte_classes[byte]], which permits us to keep the</span>
         <span class='comment'>//      &#39;next&#39; list very small.</span>
-        <span class='macro'>debug_assert</span><span class='macro'>!</span>(<span class='op'>!</span><span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>is_reversed</span>());
+        <span class='macro'>debug_assert</span><span class='macro'>!</span>(<span class='op'>!</span><span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>is_reverse</span>);
 
-        <span class='comment'>// last_match is the currently known ending match position. It is</span>
+        <span class='comment'>// The last match is the currently known ending match position. It is</span>
         <span class='comment'>// reported as an index to the most recent byte that resulted in a</span>
-        <span class='comment'>// transition to a match state. Its maximum value is `text.len()`,</span>
+        <span class='comment'>// transition to a match state and is always stored in capture slot `1`</span>
+        <span class='comment'>// when searching forwards. Its maximum value is `text.len()`,</span>
         <span class='comment'>// which can only happen after the special EOF sentinel value is fed</span>
         <span class='comment'>// to the DFA.</span>
-        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>last_match</span> <span class='op'>=</span> <span class='ident'>DfaResult</span>::<span class='ident'>NoMatch</span>;
-        <span class='kw'>let</span> (<span class='kw-2'>mut</span> <span class='ident'>si</span>, <span class='kw-2'>mut</span> <span class='ident'>i</span>) <span class='op'>=</span> (<span class='self'>self</span>.<span class='ident'>start</span>, <span class='ident'>at</span>);
+        <span class='kw'>let</span> (<span class='kw-2'>mut</span> <span class='ident'>si</span>, <span class='kw-2'>mut</span> <span class='ident'>i</span>, <span class='kw-2'>mut</span> <span class='ident'>matched</span>) <span class='op'>=</span> (<span class='self'>self</span>.<span class='ident'>start</span>, <span class='ident'>at</span>, <span class='boolval'>false</span>);
         <span class='kw'>while</span> <span class='ident'>i</span> <span class='op'>&lt;</span> <span class='ident'>text</span>.<span class='ident'>len</span>() {
             <span class='comment'>// Our set of literal prefixes can itself be a DFA, but it is</span>
             <span class='comment'>// offline and can generally be quite a bit faster. (For instance,</span>
             <span class='comment'>// memchr is used if possible.)</span>
             <span class='kw'>if</span> <span class='op'>!</span><span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>prefixes</span>.<span class='ident'>is_empty</span>() <span class='op'>&amp;&amp;</span> <span class='ident'>si</span> <span class='op'>==</span> <span class='self'>self</span>.<span class='ident'>start</span> {
                 <span class='ident'>i</span> <span class='op'>=</span> <span class='kw'>match</span> <span class='self'>self</span>.<span class='ident'>prefix_at</span>(<span class='ident'>text</span>, <span class='ident'>i</span>) {
-                    <span class='prelude-val'>None</span> <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='ident'>DfaResult</span>::<span class='ident'>NoMatch</span>,
+                    <span class='prelude-val'>None</span> <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='boolval'>false</span>,
                     <span class='prelude-val'>Some</span>(<span class='ident'>i</span>) <span class='op'>=&gt;</span> <span class='ident'>i</span>,
                 };
             }
@@ -1626,26 +1635,27 @@ implementation.)
             <span class='comment'>// but we inline it manually here to avoid the extra branch and</span>
             <span class='comment'>// also because we know we have a real `u8` (not a `Byte`, which</span>
             <span class='comment'>// may be the special EOF sentinel value).</span>
-            <span class='kw'>let</span> <span class='ident'>cls</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>insts</span>.<span class='ident'>byte_classes</span>()[<span class='ident'>text</span>[<span class='ident'>i</span>] <span class='kw'>as</span> <span class='ident'>usize</span>];
+            <span class='kw'>let</span> <span class='ident'>cls</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>byte_classes</span>[<span class='ident'>text</span>[<span class='ident'>i</span>] <span class='kw'>as</span> <span class='ident'>usize</span>];
             <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>next_si</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>states</span>[<span class='ident'>si</span> <span class='kw'>as</span> <span class='ident'>usize</span>].<span class='ident'>next</span>[<span class='ident'>cls</span> <span class='kw'>as</span> <span class='ident'>usize</span>];
             <span class='kw'>if</span> <span class='ident'>next_si</span> <span class='op'>&lt;=</span> <span class='ident'>STATE_DEAD</span> {
                 <span class='kw'>if</span> <span class='ident'>next_si</span> <span class='op'>==</span> <span class='ident'>STATE_DEAD</span> {
-                    <span class='kw'>return</span> <span class='ident'>last_match</span>;
+                    <span class='kw'>return</span> <span class='ident'>matched</span>;
                 }
                 <span class='comment'>// The next state may not have been cached, so re-compute it</span>
                 <span class='comment'>// (i.e., follow epsilon transitions).</span>
                 <span class='ident'>next_si</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>exec_byte</span>(<span class='ident'>qcur</span>, <span class='ident'>qnext</span>, <span class='ident'>si</span>, <span class='ident'>Byte</span>::<span class='ident'>byte</span>(<span class='ident'>text</span>[<span class='ident'>i</span>]));
                 <span class='macro'>debug_assert</span><span class='macro'>!</span>(<span class='ident'>next_si</span> <span class='op'>!=</span> <span class='ident'>STATE_UNKNOWN</span>);
                 <span class='kw'>if</span> <span class='ident'>next_si</span> <span class='op'>==</span> <span class='ident'>STATE_DEAD</span> {
-                    <span class='kw'>return</span> <span class='ident'>last_match</span>;
+                    <span class='kw'>return</span> <span class='ident'>matched</span>;
                 }
             }
             <span class='ident'>si</span> <span class='op'>=</span> <span class='ident'>next_si</span>;
             <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>states</span>[<span class='ident'>si</span> <span class='kw'>as</span> <span class='ident'>usize</span>].<span class='ident'>is_match</span> {
-                <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>quit_on_first_match</span> {
-                    <span class='kw'>return</span> <span class='ident'>DfaResult</span>::<span class='ident'>EarlyMatch</span>;
+                <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>quit_after_first_match</span>() {
+                    <span class='kw'>return</span> <span class='boolval'>true</span>;
                 }
-                <span class='ident'>last_match</span> <span class='op'>=</span> <span class='ident'>DfaResult</span>::<span class='ident'>Match</span>(<span class='ident'>i</span>);
+                <span class='ident'>matched</span> <span class='op'>=</span> <span class='boolval'>true</span>;
+                <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>set_end</span>(<span class='prelude-val'>Some</span>(<span class='ident'>i</span>));
             }
             <span class='ident'>i</span> <span class='op'>+=</span> <span class='number'>1</span>;
         }
@@ -1653,12 +1663,23 @@ implementation.)
         <span class='ident'>si</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>next_state</span>(<span class='ident'>qcur</span>, <span class='ident'>qnext</span>, <span class='ident'>si</span>, <span class='ident'>Byte</span>::<span class='ident'>eof</span>());
         <span class='macro'>debug_assert</span><span class='macro'>!</span>(<span class='ident'>si</span> <span class='op'>!=</span> <span class='ident'>STATE_UNKNOWN</span>);
         <span class='kw'>if</span> <span class='ident'>si</span> <span class='op'>==</span> <span class='ident'>STATE_DEAD</span> {
-            <span class='kw'>return</span> <span class='ident'>last_match</span>;
+            <span class='kw'>return</span> <span class='ident'>matched</span>;
         }
         <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>states</span>[<span class='ident'>si</span> <span class='kw'>as</span> <span class='ident'>usize</span>].<span class='ident'>is_match</span> {
-            <span class='ident'>last_match</span> <span class='op'>=</span> <span class='ident'>DfaResult</span>::<span class='ident'>Match</span>(<span class='ident'>text</span>.<span class='ident'>len</span>());
+            <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>quit_after_first_match</span>() {
+                <span class='kw'>return</span> <span class='boolval'>true</span>;
+            }
+            <span class='ident'>matched</span> <span class='op'>=</span> <span class='boolval'>true</span>;
+            <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>set_end</span>(<span class='prelude-val'>Some</span>(<span class='ident'>text</span>.<span class='ident'>len</span>()));
         }
-        <span class='ident'>last_match</span>
+        <span class='kw'>if</span> <span class='ident'>matched</span> <span class='op'>&amp;&amp;</span> <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>matches</span>.<span class='ident'>len</span>() <span class='op'>!=</span> <span class='number'>1</span> {
+            <span class='kw'>for</span> <span class='kw-2'>&amp;</span><span class='ident'>ip</span> <span class='kw'>in</span> <span class='kw-2'>&amp;</span><span class='self'>self</span>.<span class='ident'>states</span>[<span class='ident'>si</span> <span class='kw'>as</span> <span class='ident'>usize</span>].<span class='ident'>insts</span> {
+                <span class='kw'>if</span> <span class='kw'>let</span> <span class='ident'>Inst</span>::<span class='ident'>Match</span>(<span class='ident'>slot</span>) <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>prog</span>[<span class='ident'>ip</span> <span class='kw'>as</span> <span class='ident'>usize</span>] {
+                    <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>set_match</span>(<span class='ident'>slot</span>);
+                }
+            }
+        }
+        <span class='ident'>matched</span>
     }
 
     <span class='doccomment'>/// Executes the DFA on a reverse NFA.</span>
@@ -1668,50 +1689,54 @@ implementation.)
         <span class='ident'>qnext</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>SparseSet</span>,
         <span class='ident'>text</span>: <span class='kw-2'>&amp;</span>[<span class='ident'>u8</span>],
         <span class='ident'>at</span>: <span class='ident'>usize</span>,
-    ) <span class='op'>-&gt;</span> <span class='ident'>DfaResult</span> {
+    ) <span class='op'>-&gt;</span> <span class='ident'>bool</span> {
         <span class='comment'>// The comments in `exec_at` above mostly apply here too. The main</span>
         <span class='comment'>// difference is that we move backwards over the input and we look for</span>
         <span class='comment'>// the longest possible match instead of the leftmost-first match.</span>
         <span class='comment'>//</span>
         <span class='comment'>// N.B. The code duplication here is regrettable. Efforts to improve</span>
         <span class='comment'>// it without sacrificing performance are welcome. ---AG</span>
-        <span class='macro'>debug_assert</span><span class='macro'>!</span>(<span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>is_reversed</span>());
-        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>last_match</span> <span class='op'>=</span> <span class='ident'>DfaResult</span>::<span class='ident'>NoMatch</span>;
-        <span class='kw'>let</span> (<span class='kw-2'>mut</span> <span class='ident'>si</span>, <span class='kw-2'>mut</span> <span class='ident'>i</span>) <span class='op'>=</span> (<span class='self'>self</span>.<span class='ident'>start</span>, <span class='ident'>at</span>);
+        <span class='macro'>debug_assert</span><span class='macro'>!</span>(<span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>is_reverse</span>);
+        <span class='kw'>let</span> (<span class='kw-2'>mut</span> <span class='ident'>si</span>, <span class='kw-2'>mut</span> <span class='ident'>i</span>, <span class='kw-2'>mut</span> <span class='ident'>matched</span>) <span class='op'>=</span> (<span class='self'>self</span>.<span class='ident'>start</span>, <span class='ident'>at</span>, <span class='boolval'>false</span>);
         <span class='kw'>while</span> <span class='ident'>i</span> <span class='op'>&gt;</span> <span class='number'>0</span> {
             <span class='ident'>i</span> <span class='op'>-=</span> <span class='number'>1</span>;
 
-            <span class='kw'>let</span> <span class='ident'>cls</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>insts</span>.<span class='ident'>byte_classes</span>()[<span class='ident'>text</span>[<span class='ident'>i</span>] <span class='kw'>as</span> <span class='ident'>usize</span>];
+            <span class='kw'>let</span> <span class='ident'>cls</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>byte_classes</span>[<span class='ident'>text</span>[<span class='ident'>i</span>] <span class='kw'>as</span> <span class='ident'>usize</span>];
             <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>next_si</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>states</span>[<span class='ident'>si</span> <span class='kw'>as</span> <span class='ident'>usize</span>].<span class='ident'>next</span>[<span class='ident'>cls</span> <span class='kw'>as</span> <span class='ident'>usize</span>];
             <span class='kw'>if</span> <span class='ident'>next_si</span> <span class='op'>&lt;=</span> <span class='ident'>STATE_DEAD</span> {
                 <span class='kw'>if</span> <span class='ident'>next_si</span> <span class='op'>==</span> <span class='ident'>STATE_DEAD</span> {
-                    <span class='kw'>return</span> <span class='ident'>last_match</span>;
+                    <span class='kw'>return</span> <span class='ident'>matched</span>;
                 }
                 <span class='comment'>// The next state may not have been cached, so re-compute it</span>
                 <span class='comment'>// (i.e., follow epsilon transitions).</span>
                 <span class='ident'>next_si</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>exec_byte</span>(<span class='ident'>qcur</span>, <span class='ident'>qnext</span>, <span class='ident'>si</span>, <span class='ident'>Byte</span>::<span class='ident'>byte</span>(<span class='ident'>text</span>[<span class='ident'>i</span>]));
                 <span class='macro'>debug_assert</span><span class='macro'>!</span>(<span class='ident'>next_si</span> <span class='op'>!=</span> <span class='ident'>STATE_UNKNOWN</span>);
                 <span class='kw'>if</span> <span class='ident'>next_si</span> <span class='op'>==</span> <span class='ident'>STATE_DEAD</span> {
-                    <span class='kw'>return</span> <span class='ident'>last_match</span>;
+                    <span class='kw'>return</span> <span class='ident'>matched</span>;
                 }
             }
             <span class='ident'>si</span> <span class='op'>=</span> <span class='ident'>next_si</span>;
             <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>states</span>[<span class='ident'>si</span> <span class='kw'>as</span> <span class='ident'>usize</span>].<span class='ident'>is_match</span> {
-                <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>quit_on_first_match</span> {
-                    <span class='kw'>return</span> <span class='ident'>DfaResult</span>::<span class='ident'>EarlyMatch</span>;
+                <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>quit_after_first_match</span>() {
+                    <span class='kw'>return</span> <span class='boolval'>true</span>;
                 }
-                <span class='ident'>last_match</span> <span class='op'>=</span> <span class='ident'>DfaResult</span>::<span class='ident'>Match</span>(<span class='ident'>i</span><span class='op'>+</span><span class='number'>1</span>);
+                <span class='ident'>matched</span> <span class='op'>=</span> <span class='boolval'>true</span>;
+                <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>set_start</span>(<span class='prelude-val'>Some</span>(<span class='ident'>i</span><span class='op'>+</span><span class='number'>1</span>));
             }
         }
         <span class='ident'>si</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>next_state</span>(<span class='ident'>qcur</span>, <span class='ident'>qnext</span>, <span class='ident'>si</span>, <span class='ident'>Byte</span>::<span class='ident'>eof</span>());
         <span class='macro'>debug_assert</span><span class='macro'>!</span>(<span class='ident'>si</span> <span class='op'>!=</span> <span class='ident'>STATE_UNKNOWN</span>);
         <span class='kw'>if</span> <span class='ident'>si</span> <span class='op'>==</span> <span class='ident'>STATE_DEAD</span> {
-            <span class='kw'>return</span> <span class='ident'>last_match</span>;
+            <span class='kw'>return</span> <span class='ident'>matched</span>;
         }
         <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>states</span>[<span class='ident'>si</span> <span class='kw'>as</span> <span class='ident'>usize</span>].<span class='ident'>is_match</span> {
-            <span class='ident'>last_match</span> <span class='op'>=</span> <span class='ident'>DfaResult</span>::<span class='ident'>Match</span>(<span class='number'>0</span>);
+            <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>quit_after_first_match</span>() {
+                <span class='kw'>return</span> <span class='boolval'>true</span>;
+            }
+            <span class='ident'>matched</span> <span class='op'>=</span> <span class='boolval'>true</span>;
+            <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>set_start</span>(<span class='prelude-val'>Some</span>(<span class='number'>0</span>));
         }
-        <span class='ident'>last_match</span>
+        <span class='ident'>matched</span>
     }
 
     <span class='doccomment'>/// Computes the next state given the current state and the current input</span>
@@ -1729,7 +1754,7 @@ implementation.)
         <span class='kw-2'>mut</span> <span class='ident'>si</span>: <span class='ident'>StatePtr</span>,
         <span class='ident'>b</span>: <span class='ident'>Byte</span>,
     ) <span class='op'>-&gt;</span> <span class='ident'>StatePtr</span> {
-        <span class='kw'>use</span> <span class='ident'>inst</span>::<span class='ident'>Inst</span>::<span class='op'>*</span>;
+        <span class='kw'>use</span> <span class='ident'>prog</span>::<span class='ident'>Inst</span>::<span class='op'>*</span>;
 
         <span class='comment'>// Initialize a queue with the current DFA state&#39;s NFA states.</span>
         <span class='ident'>qcur</span>.<span class='ident'>clear</span>();
@@ -1781,15 +1806,21 @@ implementation.)
         <span class='comment'>// the current byte.</span>
         <span class='ident'>qnext</span>.<span class='ident'>clear</span>();
         <span class='kw'>for</span> <span class='kw-2'>&amp;</span><span class='ident'>ip</span> <span class='kw'>in</span> <span class='kw-2'>&amp;</span><span class='op'>*</span><span class='ident'>qcur</span> {
-            <span class='kw'>match</span> <span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>insts</span>[<span class='ident'>ip</span> <span class='kw'>as</span> <span class='ident'>usize</span>] {
+            <span class='kw'>match</span> <span class='self'>self</span>.<span class='ident'>prog</span>[<span class='ident'>ip</span> <span class='kw'>as</span> <span class='ident'>usize</span>] {
                 <span class='comment'>// These states never happen in a byte-based program.</span>
                 <span class='ident'>Char</span>(_) <span class='op'>|</span> <span class='ident'>Ranges</span>(_) <span class='op'>=&gt;</span> <span class='macro'>unreachable</span><span class='macro'>!</span>(),
                 <span class='comment'>// These states are handled when following epsilon transitions.</span>
                 <span class='ident'>Save</span>(_) <span class='op'>|</span> <span class='ident'>Split</span>(_) <span class='op'>|</span> <span class='ident'>EmptyLook</span>(_) <span class='op'>=&gt;</span> {}
-                <span class='ident'>Match</span> <span class='op'>=&gt;</span> {
+                <span class='ident'>Match</span>(_) <span class='op'>=&gt;</span> {
                     <span class='ident'>flags</span>.<span class='ident'>set_match</span>(<span class='boolval'>true</span>);
-                    <span class='kw'>if</span> <span class='op'>!</span><span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>is_reversed</span>() {
+                    <span class='kw'>if</span> <span class='op'>!</span><span class='self'>self</span>.<span class='ident'>continue_past_first_match</span>() {
                         <span class='kw'>break</span>;
+                    } <span class='kw'>else</span> <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>matches</span>.<span class='ident'>len</span>() <span class='op'>!=</span> <span class='number'>1</span> {
+                        <span class='comment'>// If we are continuing on to find other matches,</span>
+                        <span class='comment'>// then keep a record of the match states we&#39;ve seen.</span>
+                        <span class='kw'>if</span> <span class='op'>!</span><span class='ident'>qnext</span>.<span class='ident'>contains_ip</span>(<span class='ident'>ip</span> <span class='kw'>as</span> <span class='ident'>usize</span>) {
+                            <span class='ident'>qnext</span>.<span class='ident'>add</span>(<span class='ident'>ip</span>);
+                        }
                     }
                 }
                 <span class='ident'>Bytes</span>(<span class='kw-2'>ref</span> <span class='ident'>inst</span>) <span class='op'>=&gt;</span> {
@@ -1799,6 +1830,16 @@ implementation.)
                     }
                 }
             }
+        }
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>cache</span> <span class='op'>=</span> <span class='boolval'>true</span>;
+        <span class='kw'>if</span> <span class='ident'>b</span>.<span class='ident'>is_eof</span>() <span class='op'>&amp;&amp;</span> <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>matches</span>.<span class='ident'>len</span>() <span class='op'>!=</span> <span class='number'>1</span> {
+            <span class='comment'>// If we&#39;re processing the last byte of the input and we&#39;re</span>
+            <span class='comment'>// matching a regex set, then make the next state contain the</span>
+            <span class='comment'>// previous states transitions. We do this so that the main</span>
+            <span class='comment'>// matching loop can extract all of the match instructions.</span>
+            <span class='ident'>mem</span>::<span class='ident'>swap</span>(<span class='ident'>qcur</span>, <span class='ident'>qnext</span>);
+            <span class='comment'>// And don&#39;t cache this state because it&#39;s totally bunk.</span>
+            <span class='ident'>cache</span> <span class='op'>=</span> <span class='boolval'>false</span>;
         }
         <span class='comment'>// We&#39;ve now built up the set of NFA states that ought to comprise the</span>
         <span class='comment'>// next DFA state, so try to find it in the cache, and if it doesn&#39;t</span>
@@ -1811,7 +1852,9 @@ implementation.)
         <span class='macro'>debug_assert</span><span class='macro'>!</span>(<span class='ident'>next</span> <span class='op'>!=</span> <span class='ident'>STATE_UNKNOWN</span>);
         <span class='comment'>// And now store our state in the current state&#39;s next list.</span>
         <span class='kw'>let</span> <span class='ident'>cls</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>byte_class</span>(<span class='ident'>b</span>);
-        <span class='self'>self</span>.<span class='ident'>states</span>[<span class='ident'>si</span> <span class='kw'>as</span> <span class='ident'>usize</span>].<span class='ident'>next</span>[<span class='ident'>cls</span>] <span class='op'>=</span> <span class='ident'>next</span>;
+        <span class='kw'>if</span> <span class='ident'>cache</span> {
+            <span class='self'>self</span>.<span class='ident'>states</span>[<span class='ident'>si</span> <span class='kw'>as</span> <span class='ident'>usize</span>].<span class='ident'>next</span>[<span class='ident'>cls</span>] <span class='op'>=</span> <span class='ident'>next</span>;
+        }
         <span class='ident'>next</span>
     }
 
@@ -1844,8 +1887,8 @@ implementation.)
         <span class='ident'>q</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>SparseSet</span>,
         <span class='ident'>flags</span>: <span class='ident'>Flags</span>,
     ) {
-        <span class='kw'>use</span> <span class='ident'>inst</span>::<span class='ident'>Inst</span>::<span class='op'>*</span>;
-        <span class='kw'>use</span> <span class='ident'>inst</span>::<span class='ident'>EmptyLook</span>::<span class='op'>*</span>;
+        <span class='kw'>use</span> <span class='ident'>prog</span>::<span class='ident'>Inst</span>::<span class='op'>*</span>;
+        <span class='kw'>use</span> <span class='ident'>prog</span>::<span class='ident'>EmptyLook</span>::<span class='op'>*</span>;
 
         <span class='comment'>// We need to traverse the NFA to follow epsilon transitions, so avoid</span>
         <span class='comment'>// recursion with an explicit stack.</span>
@@ -1856,9 +1899,9 @@ implementation.)
                 <span class='kw'>continue</span>;
             }
             <span class='ident'>q</span>.<span class='ident'>add</span>(<span class='ident'>ip</span> <span class='kw'>as</span> <span class='ident'>usize</span>);
-            <span class='kw'>match</span> <span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>insts</span>[<span class='ident'>ip</span> <span class='kw'>as</span> <span class='ident'>usize</span>] {
+            <span class='kw'>match</span> <span class='self'>self</span>.<span class='ident'>prog</span>[<span class='ident'>ip</span> <span class='kw'>as</span> <span class='ident'>usize</span>] {
                 <span class='ident'>Char</span>(_) <span class='op'>|</span> <span class='ident'>Ranges</span>(_) <span class='op'>=&gt;</span> <span class='macro'>unreachable</span><span class='macro'>!</span>(),
-                <span class='ident'>Match</span> <span class='op'>|</span> <span class='ident'>Bytes</span>(_) <span class='op'>=&gt;</span> {}
+                <span class='ident'>Match</span>(_) <span class='op'>|</span> <span class='ident'>Bytes</span>(_) <span class='op'>=&gt;</span> {}
                 <span class='ident'>EmptyLook</span>(<span class='kw-2'>ref</span> <span class='ident'>inst</span>) <span class='op'>=&gt;</span> {
                     <span class='comment'>// Only follow empty assertion states if our flags satisfy</span>
                     <span class='comment'>// the assertion.</span>
@@ -1963,8 +2006,8 @@ implementation.)
         <span class='ident'>q</span>: <span class='kw-2'>&amp;</span><span class='ident'>SparseSet</span>,
         <span class='ident'>is_match</span>: <span class='ident'>bool</span>,
     ) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span>(<span class='ident'>StateKey</span>, <span class='ident'>Flags</span>)<span class='op'>&gt;</span> {
-        <span class='kw'>use</span> <span class='ident'>inst</span>::<span class='ident'>Inst</span>::<span class='op'>*</span>;
-        <span class='kw'>use</span> <span class='ident'>inst</span>::<span class='ident'>EmptyLook</span>::<span class='op'>*</span>;
+        <span class='kw'>use</span> <span class='ident'>prog</span>::<span class='ident'>Inst</span>::<span class='op'>*</span>;
+        <span class='kw'>use</span> <span class='ident'>prog</span>::<span class='ident'>EmptyLook</span>::<span class='op'>*</span>;
 
         <span class='comment'>// We need to build up enough information to recognize pre-built states</span>
         <span class='comment'>// in the DFA. Generally speaking, this includes every instruction</span>
@@ -1978,7 +2021,7 @@ implementation.)
         <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>insts</span> <span class='op'>=</span> <span class='macro'>vec</span><span class='macro'>!</span>[];
         <span class='kw'>for</span> <span class='kw-2'>&amp;</span><span class='ident'>ip</span> <span class='kw'>in</span> <span class='ident'>q</span> {
             <span class='kw'>let</span> <span class='ident'>ip</span> <span class='op'>=</span> <span class='ident'>usize_to_u32</span>(<span class='ident'>ip</span>);
-            <span class='kw'>match</span> <span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>insts</span>[<span class='ident'>ip</span> <span class='kw'>as</span> <span class='ident'>usize</span>] {
+            <span class='kw'>match</span> <span class='self'>self</span>.<span class='ident'>prog</span>[<span class='ident'>ip</span> <span class='kw'>as</span> <span class='ident'>usize</span>] {
                 <span class='ident'>Char</span>(_) <span class='op'>|</span> <span class='ident'>Ranges</span>(_) <span class='op'>=&gt;</span> <span class='macro'>unreachable</span><span class='macro'>!</span>(),
                 <span class='ident'>Save</span>(_) <span class='op'>=&gt;</span> {}
                 <span class='ident'>Split</span>(_) <span class='op'>=&gt;</span> {}
@@ -2004,12 +2047,9 @@ implementation.)
                         <span class='ident'>WordBoundary</span> <span class='op'>|</span> <span class='ident'>NotWordBoundary</span> <span class='op'>=&gt;</span> <span class='macro'>unreachable</span><span class='macro'>!</span>(),
                     }
                 }
-                <span class='ident'>Match</span> <span class='op'>=&gt;</span> {
+                <span class='ident'>Match</span>(_) <span class='op'>=&gt;</span> {
                     <span class='ident'>insts</span>.<span class='ident'>push</span>(<span class='ident'>ip</span>);
-                    <span class='comment'>// If this is a reverse program, then we want to continue</span>
-                    <span class='comment'>// executing to find the longest possible match. Otherwise,</span>
-                    <span class='comment'>// we only support leftmost-first semantics, so bail out.</span>
-                    <span class='kw'>if</span> <span class='op'>!</span><span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>insts</span>.<span class='ident'>is_reversed</span>() {
+                    <span class='kw'>if</span> <span class='op'>!</span><span class='self'>self</span>.<span class='ident'>continue_past_first_match</span>() {
                         <span class='kw'>break</span>;
                     }
                 }
@@ -2126,7 +2166,7 @@ implementation.)
         <span class='ident'>text</span>: <span class='kw-2'>&amp;</span>[<span class='ident'>u8</span>],
         <span class='ident'>at</span>: <span class='ident'>usize</span>,
     ) <span class='op'>-&gt;</span> <span class='ident'>StatePtr</span> {
-        <span class='kw'>let</span> <span class='ident'>start_flags</span> <span class='op'>=</span> <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>insts</span>.<span class='ident'>is_reversed</span>() {
+        <span class='kw'>let</span> <span class='ident'>start_flags</span> <span class='op'>=</span> <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>is_reverse</span> {
             <span class='self'>self</span>.<span class='ident'>start_flags_reverse</span>(<span class='ident'>text</span>, <span class='ident'>at</span>)
         } <span class='kw'>else</span> {
             <span class='self'>self</span>.<span class='ident'>start_flags</span>(<span class='ident'>text</span>, <span class='ident'>at</span>)
@@ -2188,7 +2228,7 @@ implementation.)
     <span class='doccomment'>/// invariant: num_byte_classes() == len(State.next)</span>
     <span class='kw'>fn</span> <span class='ident'>num_byte_classes</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>usize</span> {
         <span class='comment'>// We add 1 to account for the special EOF byte.</span>
-        ((<span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>insts</span>.<span class='ident'>byte_classes</span>()[<span class='number'>255</span>] <span class='op'>+</span> <span class='number'>1</span>) <span class='op'>+</span> <span class='number'>1</span>) <span class='kw'>as</span> <span class='ident'>usize</span>
+        (<span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>byte_classes</span>[<span class='number'>255</span>] <span class='kw'>as</span> <span class='ident'>usize</span> <span class='op'>+</span> <span class='number'>1</span>) <span class='op'>+</span> <span class='number'>1</span>
     }
 
     <span class='doccomment'>/// Given an input byte or the special EOF sentinel, return its</span>
@@ -2197,8 +2237,20 @@ implementation.)
         <span class='kw'>if</span> <span class='ident'>b</span>.<span class='ident'>is_eof</span>() {
             <span class='self'>self</span>.<span class='ident'>num_byte_classes</span>() <span class='op'>-</span> <span class='number'>1</span>
         } <span class='kw'>else</span> {
-            <span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>insts</span>.<span class='ident'>byte_classes</span>()[<span class='ident'>b</span>.<span class='number'>0</span> <span class='kw'>as</span> <span class='ident'>usize</span>] <span class='kw'>as</span> <span class='ident'>usize</span>
+            <span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>byte_classes</span>[<span class='ident'>b</span>.<span class='number'>0</span> <span class='kw'>as</span> <span class='ident'>usize</span>] <span class='kw'>as</span> <span class='ident'>usize</span>
         }
+    }
+
+    <span class='doccomment'>/// Returns true if the DFA should continue searching past the first match.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// Leftmost first semantics in the DFA are preserved by not following NFA</span>
+    <span class='doccomment'>/// transitions after the first match is seen.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// On occasion, we want to avoid leftmost first semantics to find either</span>
+    <span class='doccomment'>/// the longest match (for reverse search) or all possible matches (for</span>
+    <span class='doccomment'>/// regex sets).</span>
+    <span class='kw'>fn</span> <span class='ident'>continue_past_first_match</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>bool</span> {
+        <span class='self'>self</span>.<span class='ident'>prog</span>.<span class='ident'>is_reverse</span> <span class='op'>||</span> <span class='self'>self</span>.<span class='ident'>search</span>.<span class='ident'>matches</span>.<span class='ident'>len</span>() <span class='op'>!=</span> <span class='number'>1</span>
     }
 
     <span class='doccomment'>/// Approximate size returns the approximate heap space currently used by</span>
