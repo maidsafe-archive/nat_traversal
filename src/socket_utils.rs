@@ -101,7 +101,7 @@ pub fn enable_so_reuseport(sock: &net2::TcpBuilder) -> io::Result<()> {
 }
 
 #[cfg(target_family = "windows")]
-pub fn enable_so_reuseport(sock: &net2::TcpBuilder) -> io::Result<()> {
+pub fn enable_so_reuseport(_sock: &net2::TcpBuilder) -> io::Result<()> {
     Ok(())
 }
 
