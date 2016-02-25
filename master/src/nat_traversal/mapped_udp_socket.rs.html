@@ -671,7 +671,7 @@
         <span class='kw'>const</span> <span class='ident'>MAX_DATAGRAM_SIZE</span>: <span class='ident'>usize</span> <span class='op'>=</span> <span class='number'>256</span>;
 
         <span class='kw'>let</span> <span class='ident'>send_data</span> <span class='op'>=</span> <span class='ident'>listener_message</span>::<span class='ident'>REQUEST_MAGIC_CONSTANT</span>;
-        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>simple_servers</span>: <span class='ident'>HashSet</span><span class='op'>&lt;</span><span class='ident'>SocketAddr</span><span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>mapping_context</span>::<span class='ident'>simple_servers</span>(<span class='kw-2'>&amp;</span><span class='ident'>mc</span>)
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>simple_servers</span>: <span class='ident'>HashSet</span><span class='op'>&lt;</span><span class='ident'>SocketAddr</span><span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>mapping_context</span>::<span class='ident'>simple_udp_servers</span>(<span class='kw-2'>&amp;</span><span class='ident'>mc</span>)
                                                                       .<span class='ident'>into_iter</span>().<span class='ident'>collect</span>();
 
         <span class='comment'>// Ping all the simple servers and waiting for a response.</span>
