@@ -18,6 +18,8 @@
 use std::io;
 use std::net::{TcpStream, UdpSocket, Ipv4Addr, Ipv6Addr};
 use std::net;
+#[cfg(target_family = "windows")]
+use std::mem;
 use socket_addr::SocketAddr;
 use std::io::ErrorKind;
 use net2;
@@ -123,7 +125,7 @@ pub fn tcp_builder_local_addr(sock: &net2::TcpBuilder) -> io::Result<net::Socket
     let fd = sock.as_raw_socket();
     let stream = unsafe { TcpStream::from_raw_socket(fd) };
     let ret = stream.local_addr();
-    std::mem::forget(stream); // TODO(canndrew): Is this completely safe?
+    mem::forget(stream); // TODO(canndrew): Is this completely safe?
     ret
 }
 
