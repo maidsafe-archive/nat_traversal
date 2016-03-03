@@ -353,7 +353,7 @@ mod tests {
     use rendezvous_info::gen_rendezvous_info;
 
     #[test]
-    fn two_peers_punch_hole_over_loopback() {
+    fn two_peers_udp_hole_punch_over_loopback() {
         let mapping_context = unwrap_result!(MappingContext::new().result_discard());
         let mapped_socket_0 = unwrap_result!(MappedUdpSocket::new(&mapping_context).result_discard());
         let mapped_socket_1 = unwrap_result!(MappedUdpSocket::new(&mapping_context).result_discard());
