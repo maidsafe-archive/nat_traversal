@@ -18,12 +18,12 @@
 //! # `nat_traversal`
 //! NAT traversal utilities.
 
+use maidsafe_utilities::serialisation::{deserialise, SerialisationError, serialise};
 use std::io;
 use std::net::UdpSocket;
 use std;
 use std::thread;
 
-use cbor;
 use time;
 use socket_addr::SocketAddr;
 use w_result::{WResult, WOk, WErr};
@@ -73,11 +73,11 @@ quick_error! {
         }
         /// Received invalid data on the udp socket while hole punching.
         InvalidHolePunchPacket {
-            err: cbor::CborError,
+            err: SerialisationError,
         } {
             description("Received invalid data on the udp socket while hole punching")
             display("Received invalid data on the udp socket while hole punching. \
-                     cbor decoding produced the error: {}", err)
+                     deserialisation produced the error: {}", err)
             cause(err)
         }
         /// There was an IO error trying to send a message to one of the peer's potential endpoints.
@@ -152,9 +152,8 @@ impl PunchedUdpSocket {
                 secret: our_secret,
                 ack: false,
             };
-            let mut enc = ::cbor::Encoder::from_memory();
-            enc.encode(::std::iter::once(&hole_punch)).unwrap();
-            enc.into_bytes()
+
+            serialise(&hole_punch).unwrap()
         };
 
         assert!(send_data.len() <= MAX_DATAGRAM_SIZE,
@@ -238,10 +237,8 @@ impl PunchedUdpSocket {
                     Ok(None) => break,
                     Err(e) => return WErr(UdpPunchHoleError::Io { err: e }),
                 };
-                match ::cbor::Decoder::from_reader(&recv_data[..read_size])
-                             .decode::<HolePunch>()
-                             .next() {
-                    Some(Ok(hp)) => {
+                match deserialise::<HolePunch>(&recv_data[..read_size]) {
+                    Ok(hp) => {
                         if hp.secret == our_secret && hp.ack {
                             return WOk(PunchedUdpSocket {
                                 socket: socket,
@@ -254,9 +251,8 @@ impl PunchedUdpSocket {
                                     secret: their_secret,
                                     ack: true,
                                 };
-                                let mut enc = ::cbor::Encoder::from_memory();
-                                enc.encode(::std::iter::once(&hole_punch)).unwrap();
-                                enc.into_bytes()
+
+                                serialise(&hole_punch).unwrap()
                             };
 
                             assert!(send_data.len() <= MAX_DATAGRAM_SIZE,
@@ -309,7 +305,7 @@ impl PunchedUdpSocket {
                             });
                         }
                     }
-                    Some(Err(e)) => {
+                    Err(e) => {
                         // Protect against a malicious peer sending us loads of spurious data.
                         if warnings.len() < 10 {
                             warnings.push(UdpPunchHoleWarning::InvalidHolePunchPacket {
@@ -317,7 +313,6 @@ impl PunchedUdpSocket {
                             });
                         }
                     }
-                    None => (),
                 };
             }
         }
@@ -332,10 +327,8 @@ impl PunchedUdpSocket {
 /// hole punching succeeds it's possible that more hole punching packets sent by the remote peer
 /// may yet arrive on the socket. This function can be used to filter out those packets.
 pub fn filter_udp_hole_punch_packet(data: &[u8]) -> Option<&[u8]> {
-    match ::cbor::Decoder::from_reader(data)
-                 .decode::<HolePunch>().next()
-    {
-        Some(Ok(_)) => None,
+    match deserialise::<HolePunch>(data){
+        Ok(_) => None,
         _ => Some(data),
     }
 }
@@ -386,7 +379,7 @@ mod tests {
         const DATA_LEN: usize = 8;
         let data_send: [u8; DATA_LEN] = rand::random();
         let mut data_recv;
-        
+
         // Send data from 0 to 1
         data_recv = [0u8; 1024];
         let n = unwrap_result!(punched_socket_0.socket.send_to(&data_send[..], &*punched_socket_0.peer_addr));
