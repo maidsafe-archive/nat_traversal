@@ -16,15 +16,13 @@
 // relating to use of the SAFE Network Software.
 
 use std::io;
-use std::net::{TcpStream, UdpSocket, Ipv4Addr, Ipv6Addr};
+use std::net::{TcpStream, UdpSocket, IpAddr, Ipv4Addr, Ipv6Addr};
 use std::net;
 #[cfg(target_family = "windows")]
 use std::mem;
 use socket_addr::SocketAddr;
 use std::io::ErrorKind;
 use net2;
-
-use ip::IpAddr;
 
 use utils;
 
