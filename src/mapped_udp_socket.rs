@@ -21,12 +21,12 @@
 use std::io;
 use std::net::UdpSocket;
 use std::net;
+use std::net::IpAddr;
 use std::time::Duration;
 use std::collections::HashSet;
 
 use igd;
 use time;
-use ip::{SocketAddrExt, IpAddr};
 use maidsafe_utilities::serialisation::deserialise;
 use socket_addr::SocketAddr;
 use w_result::{WResult, WOk, WErr};
@@ -150,7 +150,7 @@ impl MappedUdpSocket {
             Ok(local_addr) => local_addr,
             Err(e) => return WErr(MappedUdpSocketMapError::SocketLocalAddr { err: e })
         };
-        match SocketAddrExt::ip(&local_addr) {
+        match local_addr.ip() {
             IpAddr::V4(ipv4_addr) => {
                 if socket_utils::ipv4_is_unspecified(&ipv4_addr) {
                     // If the socket address is unspecified we add an address for every local
