@@ -45,7 +45,6 @@
 // is fixed.
 #![allow(missing_docs)]
 
-extern crate cbor;
 extern crate net2;
 extern crate rand;
 extern crate rustc_serialize;
