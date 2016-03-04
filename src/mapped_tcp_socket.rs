@@ -19,7 +19,7 @@
 //! NAT traversal utilities.
 
 use std::net;
-use std::net::TcpStream;
+use std::net::{IpAddr, TcpStream};
 use std::io;
 use std::io::{Read, Write};
 use std::time::Duration;
@@ -30,7 +30,6 @@ use igd;
 use net2;
 use socket_addr::SocketAddr;
 use w_result::{WResult, WErr, WOk};
-use ip::{SocketAddrExt, IpAddr};
 use maidsafe_utilities::serialisation::{deserialise, SerialisationError};
 
 use mapping_context::MappingContext;
@@ -196,7 +195,7 @@ quick_error! {
 }
 
 pub fn new_reusably_bound_socket(local_addr: &net::SocketAddr) -> Result<net2::TcpBuilder, NewReusablyBoundSocketError> {
-    let socket_res = match SocketAddrExt::ip(local_addr) {
+    let socket_res = match local_addr.ip() {
         IpAddr::V4(..) => net2::TcpBuilder::new_v4(),
         IpAddr::V6(..) => net2::TcpBuilder::new_v6(),
     };
@@ -232,7 +231,7 @@ impl MappedTcpSocket {
             Ok(local_addr) => local_addr,
             Err(e) => return WErr(MappedTcpSocketMapError::SocketLocalAddr { err: e }),
         };
-        match SocketAddrExt::ip(&local_addr) {
+        match local_addr.ip() {
             IpAddr::V4(ipv4_addr) => {
                 if socket_utils::ipv4_is_unspecified(&ipv4_addr) {
                     // If the socket address is unspecified we add an address for every local
