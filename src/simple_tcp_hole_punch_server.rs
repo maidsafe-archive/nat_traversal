@@ -30,7 +30,6 @@ use maidsafe_utilities::serialisation::serialise;
 use maidsafe_utilities::thread::RaiiThreadJoiner;
 use w_result::{WResult, WOk, WErr};
 use socket_addr::SocketAddr;
-use ip::SocketAddrExt;
 
 use listener_message;
 use socket_utils;
@@ -100,7 +99,7 @@ impl<'a> SimpleTcpHolePunchServer<'a> {
         let mut local_addr = None;
         let unrestricted_endpoints = mapped_socket.endpoints.into_iter().filter_map(|msa| {
             let addr = msa.addr;
-            if socket_utils::is_loopback(&SocketAddrExt::ip(&*addr)) {
+            if socket_utils::is_loopback(&addr.ip()) {
                 local_addr = Some(addr);
                 return None;
             };
