@@ -15,13 +15,7 @@
 // Please review the Licences for the specific language governing permissions and limitations
 // relating to use of the SAFE Network Software.
 
-//! # `nat_traversal`
-//! NAT traversal utilities.
-
-#![doc(html_logo_url =
-           "https://raw.githubusercontent.com/maidsafe/QA/master/Images/maidsafe_logo.png",
-       html_favicon_url = "http://maidsafe.net/img/favicon.ico",
-       html_root_url = "http://maidsafe.github.io/nat_traversal/")]
+//! Simple service example.
 
 // For explanation of lint checks, run `rustc -W help` or see
 // https://github.com/maidsafe/QA/blob/master/Documentation/Rust%20Lint%20Checks.md
@@ -41,45 +35,49 @@
 #![cfg_attr(feature="clippy", plugin(clippy))]
 #![cfg_attr(feature="clippy", deny(clippy, clippy_pedantic))]
 
-// TODO(canndrew): Remove this once this: https://github.com/tailhook/quick-error/issues/18
-// is fixed.
-#![allow(missing_docs)]
-
-extern crate net2;
-extern crate rand;
-extern crate rustc_serialize;
-extern crate time;
-extern crate void;
-#[macro_use]
-extern crate maidsafe_utilities;
-extern crate igd;
-extern crate socket_addr;
-extern crate get_if_addrs;
+extern crate nat_traversal;
 extern crate w_result;
-#[allow(unused_extern_crates)] // Needed because the crate is only used for macros
-#[macro_use]
-extern crate quick_error;
 
-pub use mapping_context::{MappingContext, MappingContextNewError, MappingContextNewWarning};
-pub use mapped_socket_addr::MappedSocketAddr;
-pub use rendezvous_info::{PrivRendezvousInfo, PubRendezvousInfo,
-                         gen_rendezvous_info};
-pub use mapped_udp_socket::{MappedUdpSocket, MappedUdpSocketMapError,
-                            MappedUdpSocketMapWarning, MappedUdpSocketNewError};
-pub use punched_udp_socket::{PunchedUdpSocket, filter_udp_hole_punch_packet};
-pub use mapped_tcp_socket::{MappedTcpSocket, tcp_punch_hole};
-pub use simple_udp_hole_punch_server::{SimpleUdpHolePunchServer, SimpleUdpHolePunchServerNewError};
-pub use simple_tcp_hole_punch_server::{SimpleTcpHolePunchServer, SimpleTcpHolePunchServerNewError};
+use nat_traversal::{MappingContext, SimpleTcpHolePunchServer};
+use w_result::{WOk, WErr};
 
-mod mapping_context;
-mod mapped_socket_addr;
-mod rendezvous_info;
-mod mapped_udp_socket;
-mod punched_udp_socket;
-mod mapped_tcp_socket;
-mod simple_udp_hole_punch_server;
-mod simple_tcp_hole_punch_server;
-mod socket_utils;
-mod listener_message;
-mod utils;
+fn main() {
+    println!("The example runs a simple rendezvous server that peers can use to connect to each other with");
+
+    // First, we must create a mapping context.
+    let mapping_context = match MappingContext::new() {
+        WOk(mapping_context, warnings) => {
+            for warning in warnings {
+                println!("Warning when creating mapping context: {}", warning);
+            }
+            mapping_context
+        }
+        WErr(e) => {
+            println!("Error creating mapping context: {}", e);
+            println!("Exiting.");
+            return;
+        }
+    };
+
+    // Now we create the server.
+    let simple_server = match SimpleTcpHolePunchServer::new(&mapping_context) {
+        WOk(simple_server, warnings) => {
+            for warning in warnings {
+                println!("Warning when creating simple server: {}", warning);
+            }
+            simple_server
+        },
+        WErr(e) => {
+            println!("Error creating simple server: {}", e);
+            println!("Exiting.");
+            return;
+        }
+    };
+
+    // Now we print the servers known addresses
+    let addresses = simple_server.addresses();
+    println!("Server addresses: {:#?}", addresses);
+
+    std::thread::park();
+}
 

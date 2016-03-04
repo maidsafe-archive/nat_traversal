@@ -24,6 +24,10 @@ use socket_addr::SocketAddr;
 use std::io::ErrorKind;
 use net2;
 
+use ip::IpAddr;
+
+use utils;
+
 /// A self interruptable receive trait that allows a timed-out period to be defined
 pub trait RecvUntil {
     /// After specified timed-out period, the blocking receive method shall return with an error
@@ -41,15 +45,12 @@ impl RecvUntil for UdpSocket {
         let old_timeout = try!(self.read_timeout());
         loop {
             let current_time = ::time::SteadyTime::now();
-            let timeout_ms = (deadline - current_time).num_milliseconds();
-
-            if timeout_ms <= 0 {
+            if current_time >= deadline {
                 try!(self.set_read_timeout(old_timeout));
                 return Ok(None);
             }
-
-            // TODO (canndrew): should eventually be able to remove this conversion
-            let timeout = ::std::time::Duration::from_millis(timeout_ms as u64);
+            let timeout = deadline - current_time;
+            let timeout = utils::time_duration_to_std_duration(timeout);
             try!(self.set_read_timeout(Some(timeout)));
 
             match self.recv_from(buf) {
@@ -91,6 +92,23 @@ pub fn ipv4_is_unspecified(addr: &Ipv4Addr) -> bool {
 // TODO(canndrew): Remove this once #[feature(ip)] is stable
 pub fn ipv6_is_unspecified(addr: &Ipv6Addr) -> bool {
     addr.segments() == [0, 0, 0, 0, 0, 0, 0, 0]
+}
+
+// TODO(canndrew): Remove this once #[feature(ip)] is stable
+pub fn ipv4_is_loopback(addr: &Ipv4Addr) -> bool {
+    addr.octets()[0] == 127
+}
+
+// TODO(canndrew): Remove this once #[feature(ip)] is stable
+pub fn ipv6_is_loopback(addr: &Ipv6Addr) -> bool {
+    addr.segments() == [0, 0, 0, 0, 0, 0, 0, 1]
+}
+
+pub fn is_loopback(addr: &IpAddr) -> bool {
+    match *addr {
+        IpAddr::V4(ref addr_v4) => ipv4_is_loopback(addr_v4),
+        IpAddr::V6(ref addr_v6) => ipv6_is_loopback(addr_v6),
+    }
 }
 
 #[cfg(target_family = "unix")]
