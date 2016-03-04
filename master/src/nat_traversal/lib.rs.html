@@ -123,6 +123,9 @@
 <span id="80">80</span>
 <span id="81">81</span>
 <span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
 </pre><pre class='rust '>
 <span class='comment'>// Copyright 2016 MaidSafe.net limited.</span>
 <span class='comment'>//</span>
@@ -195,6 +198,7 @@
 <span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>punched_udp_socket</span>::{<span class='ident'>PunchedUdpSocket</span>, <span class='ident'>filter_udp_hole_punch_packet</span>};
 <span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>mapped_tcp_socket</span>::{<span class='ident'>MappedTcpSocket</span>, <span class='ident'>tcp_punch_hole</span>};
 <span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>simple_udp_hole_punch_server</span>::{<span class='ident'>SimpleUdpHolePunchServer</span>, <span class='ident'>SimpleUdpHolePunchServerNewError</span>};
+<span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>simple_tcp_hole_punch_server</span>::{<span class='ident'>SimpleTcpHolePunchServer</span>, <span class='ident'>SimpleTcpHolePunchServerNewError</span>};
 
 <span class='kw'>mod</span> <span class='ident'>mapping_context</span>;
 <span class='kw'>mod</span> <span class='ident'>mapped_socket_addr</span>;
@@ -203,8 +207,10 @@
 <span class='kw'>mod</span> <span class='ident'>punched_udp_socket</span>;
 <span class='kw'>mod</span> <span class='ident'>mapped_tcp_socket</span>;
 <span class='kw'>mod</span> <span class='ident'>simple_udp_hole_punch_server</span>;
+<span class='kw'>mod</span> <span class='ident'>simple_tcp_hole_punch_server</span>;
 <span class='kw'>mod</span> <span class='ident'>socket_utils</span>;
 <span class='kw'>mod</span> <span class='ident'>listener_message</span>;
+<span class='kw'>mod</span> <span class='ident'>utils</span>;
 
 </pre>
 </section>
