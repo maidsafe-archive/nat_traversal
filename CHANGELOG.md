@@ -1,5 +1,8 @@
 # NAT Traversal - Change Log
 
+## [0.2.1]
+- Better interoperability with `io::Error`
+
 ## [0.2.0]
 - Implemented TCP hole punching
 - Replaced ip::IpAddr with std::IpAddr
