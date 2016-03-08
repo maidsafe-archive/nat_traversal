@@ -67,6 +67,20 @@ quick_error! {
     }
 }
 
+impl From<SimpleUdpHolePunchServerNewError> for io::Error {
+    fn from(e: SimpleUdpHolePunchServerNewError) -> io::Error {
+        let err_str = format!("{}", e);
+        let kind = match e {
+            SimpleUdpHolePunchServerNewError::CreateMappedSocket { err } => {
+                let err: io::Error = From::from(err);
+                err.kind()
+            },
+            SimpleUdpHolePunchServerNewError::SetSocketTimeout { err } => err.kind(),
+        };
+        io::Error::new(kind, err_str)
+    }
+}
+
 impl<'a> SimpleUdpHolePunchServer<'a> {
     /// Create a new server. This will spawn a background thread which will serve requests until
     /// the server is dropped.
