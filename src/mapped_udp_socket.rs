@@ -81,6 +81,18 @@ quick_error! {
     }
 }
 
+impl From<MappedUdpSocketMapError> for io::Error {
+    fn from(e: MappedUdpSocketMapError) -> io::Error {
+        let err_str = format!("{}", e);
+        let kind = match e {
+            MappedUdpSocketMapError::SocketLocalAddr { err } => err.kind(),
+            MappedUdpSocketMapError::RecvError { err } => err.kind(),
+            MappedUdpSocketMapError::SendError { err } => err.kind(),
+        };
+        io::Error::new(kind, err_str)
+    }
+}
+
 quick_error! {
     /// Warnings raised by MappedUdpSocket::map
     #[derive(Debug)]
@@ -133,6 +145,20 @@ quick_error! {
                      an error: {}", err)
             cause(err)
         }
+    }
+}
+
+impl From<MappedUdpSocketNewError> for io::Error {
+    fn from(e: MappedUdpSocketNewError) -> io::Error {
+        let err_str = format!("{}", e);
+        let kind = match e {
+            MappedUdpSocketNewError::CreateSocket { err } => err.kind(),
+            MappedUdpSocketNewError::MapSocket { err } => {
+                let err: io::Error = From::from(err);
+                err.kind()
+            },
+        };
+        io::Error::new(kind, err_str)
     }
 }
 

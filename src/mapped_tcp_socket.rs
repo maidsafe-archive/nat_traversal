@@ -73,6 +73,16 @@ quick_error! {
     }
 }
 
+impl From<MappedTcpSocketMapError> for io::Error {
+    fn from(e: MappedTcpSocketMapError) -> io::Error {
+        let err_str = format!("{}", e);
+        let kind = match e {
+            MappedTcpSocketMapError::SocketLocalAddr { err } => err.kind(),
+        };
+        io::Error::new(kind, err_str)
+    }
+}
+
 quick_error! {
     /// Warnings raised by MappedTcpSocket::map
     #[derive(Debug)]
@@ -169,6 +179,23 @@ quick_error! {
     }
 }
 
+impl From<MappedTcpSocketNewError> for io::Error {
+    fn from(e: MappedTcpSocketNewError) -> io::Error {
+        let err_str = format!("{}", e);
+        let kind = match e {
+            MappedTcpSocketNewError::CreateSocket { err } => err.kind(),
+            MappedTcpSocketNewError::EnableReuseAddr { err } => err.kind(),
+            MappedTcpSocketNewError::EnableReusePort { err } => err.kind(),
+            MappedTcpSocketNewError::Bind { err } => err.kind(),
+            MappedTcpSocketNewError::Map { err } => {
+                let err: io::Error = From::from(err);
+                err.kind()
+            },
+        };
+        io::Error::new(kind, err_str)
+    }
+}
+
 quick_error! {
     /// Errors returned by new_reusably_bound_socket
     #[derive(Debug)]
@@ -199,6 +226,19 @@ quick_error! {
                      set", err)
             cause(err)
         }
+    }
+}
+
+impl From<NewReusablyBoundSocketError> for io::Error {
+    fn from(e: NewReusablyBoundSocketError) -> io::Error {
+        let err_str = format!("{}", e);
+        let kind = match e {
+            NewReusablyBoundSocketError::Create { err } => err.kind(),
+            NewReusablyBoundSocketError::EnableReuseAddr { err } => err.kind(),
+            NewReusablyBoundSocketError::EnableReusePort { err } => err.kind(),
+            NewReusablyBoundSocketError::Bind { err } => err.kind(),
+        };
+        io::Error::new(kind, err_str)
     }
 }
 
@@ -497,6 +537,22 @@ quick_error! {
             display("Tcp hole punching timed out without making a successful connection. The \
                      following warnings were raised during hole punching: {}", DisplayWarnings(warnings))
         }
+    }
+}
+
+impl From<TcpPunchHoleError> for io::Error {
+    fn from(e: TcpPunchHoleError) -> io::Error {
+        let err_str = format!("{}", e);
+        let kind = match e {
+            TcpPunchHoleError::SocketLocalAddr { err } => err.kind(),
+            TcpPunchHoleError::NewReusablyBoundSocket { err } => {
+                let err: io::Error = From::from(err);
+                err.kind()
+            },
+            TcpPunchHoleError::Listen { err } => err.kind(),
+            TcpPunchHoleError::TimedOut { .. } => io::ErrorKind::TimedOut,
+        };
+        io::Error::new(kind, err_str)
     }
 }
 

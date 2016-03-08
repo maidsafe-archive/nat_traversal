@@ -116,16 +116,14 @@ quick_error! {
 }
 
 impl From<UdpPunchHoleError> for io::Error {
-    fn from(err: UdpPunchHoleError) -> io::Error {
-        match err {
-            UdpPunchHoleError::TimedOut => io::Error::new(io::ErrorKind::TimedOut,
-                                                          "Udp hole punching timed out waiting \
-                                                           for a response from the peer"),
-            UdpPunchHoleError::Io { err } => err,
-            UdpPunchHoleError::SendCompleteAck => io::Error::new(io::ErrorKind::Other,
-                                                                 "Error sending ACK to peer. Kept \
-                                                                  getting partial writes."),
-        }
+    fn from(e: UdpPunchHoleError) -> io::Error {
+        let err_str = format!("{}", e);
+        let kind = match e {
+            UdpPunchHoleError::TimedOut => io::ErrorKind::TimedOut,
+            UdpPunchHoleError::Io { err } => err.kind(),
+            UdpPunchHoleError::SendCompleteAck => io::ErrorKind::Other,
+        };
+        io::Error::new(kind, err_str)
     }
 }
 

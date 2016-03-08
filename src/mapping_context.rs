@@ -79,6 +79,17 @@ quick_error! {
     }
 }
 
+impl From<MappingContextNewError> for io::Error {
+    fn from(e: MappingContextNewError) -> io::Error {
+        let err_str = format!("{}", e);
+        let kind = match e {
+            MappingContextNewError::ListInterfaces { err } => err.kind(),
+            MappingContextNewError::SpawnThread { err } => err.kind(),
+        };
+        io::Error::new(kind, err_str)
+    }
+}
+
 quick_error! {
     #[derive(Debug)]
     pub enum MappingContextNewWarning {
