@@ -52,6 +52,8 @@ extern crate time;
 extern crate void;
 #[macro_use]
 extern crate maidsafe_utilities;
+#[macro_use]
+extern crate unwrap;
 extern crate igd;
 extern crate socket_addr;
 extern crate get_if_addrs;

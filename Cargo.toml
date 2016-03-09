@@ -26,3 +26,5 @@ sodiumoxide = "~0.0.9"
 time = "~0.1.34"
 void = "1.0.1"
 w_result = "~0.1.1"
+unwrap = "~1.0.0"
+
