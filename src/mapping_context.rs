@@ -168,7 +168,7 @@ impl MappingContext {
                 Err(e) => return WErr(MappingContextNewError::SpawnThread { err: e }),
                 Ok(jh) => {
                     // If the child thread panicked, propogate the panic.
-                    let res = unwrap!(jh.join());
+                    let res = unwrap_result!(jh.join());
                     match res {
                         WErr(e) => match e {},
                         WOk(interface, ws) => {
@@ -193,7 +193,7 @@ impl MappingContext {
     pub fn add_simple_udp_servers<S>(&self, servers: S)
         where S: IntoIterator<Item=SocketAddr>
     {
-        let mut s = unwrap!(self.simple_udp_servers.write());
+        let mut s = unwrap_result!(self.simple_udp_servers.write());
         s.extend(servers)
     }
 
@@ -202,25 +202,25 @@ impl MappingContext {
     pub fn add_simple_tcp_servers<S>(&self, servers: S)
         where S: IntoIterator<Item=SocketAddr>
     {
-        let mut s = unwrap!(self.simple_tcp_servers.write());
+        let mut s = unwrap_result!(self.simple_tcp_servers.write());
         s.extend(servers)
     }
 }
 
 pub fn interfaces_v4(mc: &MappingContext) -> Vec<InterfaceV4> {
-    unwrap!(mc.interfaces_v4.read()).clone()
+    unwrap_result!(mc.interfaces_v4.read()).clone()
 }
 
 pub fn interfaces_v6(mc: &MappingContext) -> Vec<InterfaceV6> {
-    unwrap!(mc.interfaces_v6.read()).clone()
+    unwrap_result!(mc.interfaces_v6.read()).clone()
 }
 
 pub fn simple_udp_servers(mc: &MappingContext) -> Vec<SocketAddr> {
-    unwrap!(mc.simple_udp_servers.read()).clone()
+    unwrap_result!(mc.simple_udp_servers.read()).clone()
 }
 
 pub fn simple_tcp_servers(mc: &MappingContext) -> Vec<SocketAddr> {
-    unwrap!(mc.simple_tcp_servers.read()).clone()
+    unwrap_result!(mc.simple_tcp_servers.read()).clone()
 }
 
 #[cfg(test)]
@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn create_mapping_context() {
-        let _ = unwrap!(MappingContext::new().result_discard());
+        let _ = unwrap_result!(MappingContext::new().result_discard());
     }
 }
 

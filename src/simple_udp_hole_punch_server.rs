@@ -139,7 +139,7 @@ impl<'a> SimpleUdpHolePunchServer<'a> {
                     external_addr: SocketAddr(peer_addr.clone()),
                 };
 
-                let _ = udp_socket.send_to(&unwrap!(serialise(&resp)),
+                let _ = udp_socket.send_to(&unwrap_result!(serialise(&resp)),
                                            peer_addr);
             }
         }

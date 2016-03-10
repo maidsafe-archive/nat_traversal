@@ -35,10 +35,8 @@
 #![cfg_attr(feature="clippy", plugin(clippy))]
 #![cfg_attr(feature="clippy", deny(clippy, clippy_pedantic))]
 
-#[macro_use]
-extern crate unwrap;
-#[macro_use]
 #[allow(unused_extern_crates)]
+#[macro_use]
 extern crate maidsafe_utilities;
 extern crate nat_traversal;
 extern crate w_result;
@@ -137,7 +135,7 @@ fn main() {
     // address translation sucks.
     println!("Your public rendezvous info is:");
     println!("");
-    println!("{}", unwrap!(rustc_serialize::json::encode(&our_pub_info)));
+    println!("{}", unwrap_result!(rustc_serialize::json::encode(&our_pub_info)));
     println!("");
 
     let their_pub_info;

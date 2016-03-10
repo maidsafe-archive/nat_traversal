@@ -173,7 +173,7 @@ impl<'a> SimpleTcpHolePunchServer<'a> {
                         external_addr: SocketAddr(peer_addr),
                     };
 
-                    let _ = stream.write(&unwrap!(serialise(&resp)));
+                    let _ = stream.write(&unwrap_result!(serialise(&resp)));
                 });
             }
         }
