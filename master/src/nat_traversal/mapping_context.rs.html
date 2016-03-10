@@ -447,7 +447,7 @@
                 <span class='prelude-val'>Err</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='kw'>return</span> <span class='ident'>WErr</span>(<span class='ident'>MappingContextNewError</span>::<span class='ident'>SpawnThread</span> { <span class='ident'>err</span>: <span class='ident'>e</span> }),
                 <span class='prelude-val'>Ok</span>(<span class='ident'>jh</span>) <span class='op'>=&gt;</span> {
                     <span class='comment'>// If the child thread panicked, propogate the panic.</span>
-                    <span class='kw'>let</span> <span class='ident'>res</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>jh</span>.<span class='ident'>join</span>());
+                    <span class='kw'>let</span> <span class='ident'>res</span> <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>jh</span>.<span class='ident'>join</span>());
                     <span class='kw'>match</span> <span class='ident'>res</span> {
                         <span class='ident'>WErr</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='kw'>match</span> <span class='ident'>e</span> {},
                         <span class='ident'>WOk</span>(<span class='ident'>interface</span>, <span class='ident'>ws</span>) <span class='op'>=&gt;</span> {
@@ -472,7 +472,7 @@
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>add_simple_udp_servers</span><span class='op'>&lt;</span><span class='ident'>S</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>servers</span>: <span class='ident'>S</span>)
         <span class='kw'>where</span> <span class='ident'>S</span>: <span class='ident'>IntoIterator</span><span class='op'>&lt;</span><span class='ident'>Item</span><span class='op'>=</span><span class='ident'>SocketAddr</span><span class='op'>&gt;</span>
     {
-        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>s</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='self'>self</span>.<span class='ident'>simple_udp_servers</span>.<span class='ident'>write</span>());
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>s</span> <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='self'>self</span>.<span class='ident'>simple_udp_servers</span>.<span class='ident'>write</span>());
         <span class='ident'>s</span>.<span class='ident'>extend</span>(<span class='ident'>servers</span>)
     }
 
@@ -481,25 +481,25 @@
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>add_simple_tcp_servers</span><span class='op'>&lt;</span><span class='ident'>S</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>servers</span>: <span class='ident'>S</span>)
         <span class='kw'>where</span> <span class='ident'>S</span>: <span class='ident'>IntoIterator</span><span class='op'>&lt;</span><span class='ident'>Item</span><span class='op'>=</span><span class='ident'>SocketAddr</span><span class='op'>&gt;</span>
     {
-        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>s</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='self'>self</span>.<span class='ident'>simple_tcp_servers</span>.<span class='ident'>write</span>());
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>s</span> <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='self'>self</span>.<span class='ident'>simple_tcp_servers</span>.<span class='ident'>write</span>());
         <span class='ident'>s</span>.<span class='ident'>extend</span>(<span class='ident'>servers</span>)
     }
 }
 
 <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>interfaces_v4</span>(<span class='ident'>mc</span>: <span class='kw-2'>&amp;</span><span class='ident'>MappingContext</span>) <span class='op'>-&gt;</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>InterfaceV4</span><span class='op'>&gt;</span> {
-    <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>mc</span>.<span class='ident'>interfaces_v4</span>.<span class='ident'>read</span>()).<span class='ident'>clone</span>()
+    <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>mc</span>.<span class='ident'>interfaces_v4</span>.<span class='ident'>read</span>()).<span class='ident'>clone</span>()
 }
 
 <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>interfaces_v6</span>(<span class='ident'>mc</span>: <span class='kw-2'>&amp;</span><span class='ident'>MappingContext</span>) <span class='op'>-&gt;</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>InterfaceV6</span><span class='op'>&gt;</span> {
-    <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>mc</span>.<span class='ident'>interfaces_v6</span>.<span class='ident'>read</span>()).<span class='ident'>clone</span>()
+    <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>mc</span>.<span class='ident'>interfaces_v6</span>.<span class='ident'>read</span>()).<span class='ident'>clone</span>()
 }
 
 <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>simple_udp_servers</span>(<span class='ident'>mc</span>: <span class='kw-2'>&amp;</span><span class='ident'>MappingContext</span>) <span class='op'>-&gt;</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>SocketAddr</span><span class='op'>&gt;</span> {
-    <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>mc</span>.<span class='ident'>simple_udp_servers</span>.<span class='ident'>read</span>()).<span class='ident'>clone</span>()
+    <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>mc</span>.<span class='ident'>simple_udp_servers</span>.<span class='ident'>read</span>()).<span class='ident'>clone</span>()
 }
 
 <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>simple_tcp_servers</span>(<span class='ident'>mc</span>: <span class='kw-2'>&amp;</span><span class='ident'>MappingContext</span>) <span class='op'>-&gt;</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>SocketAddr</span><span class='op'>&gt;</span> {
-    <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>mc</span>.<span class='ident'>simple_tcp_servers</span>.<span class='ident'>read</span>()).<span class='ident'>clone</span>()
+    <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>mc</span>.<span class='ident'>simple_tcp_servers</span>.<span class='ident'>read</span>()).<span class='ident'>clone</span>()
 }
 
 <span class='attribute'>#[<span class='ident'>cfg</span>(<span class='ident'>test</span>)]</span>
@@ -508,7 +508,7 @@
 
     <span class='attribute'>#[<span class='ident'>test</span>]</span>
     <span class='kw'>fn</span> <span class='ident'>create_mapping_context</span>() {
-        <span class='kw'>let</span> _ <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>MappingContext</span>::<span class='ident'>new</span>().<span class='ident'>result_discard</span>());
+        <span class='kw'>let</span> _ <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>MappingContext</span>::<span class='ident'>new</span>().<span class='ident'>result_discard</span>());
     }
 }
 
