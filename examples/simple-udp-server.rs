@@ -60,7 +60,7 @@ fn main() {
     };
 
     // Now we create the server.
-    let simple_server = match SimpleUdpHolePunchServer::new(&mapping_context) {
+    let simple_server = match SimpleUdpHolePunchServer::new(Box::new(mapping_context)) {
         WOk(simple_server, warnings) => {
             for warning in warnings {
                 println!("Warning when creating simple server: {}", warning);
