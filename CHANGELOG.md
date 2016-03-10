@@ -1,5 +1,8 @@
 # NAT Traversal - Change Log
 
+## [0.3.0]
+- Change Simple{Tcp,Udp}HolePunchServer to use `AsRef`
+
 ## [0.2.1]
 - Better interoperability with `io::Error`
 
