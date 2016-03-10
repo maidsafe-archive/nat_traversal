@@ -345,9 +345,9 @@ mod tests {
 
     #[test]
     fn two_peers_udp_hole_punch_over_loopback() {
-        let mapping_context = unwrap!(MappingContext::new().result_discard());
-        let mapped_socket_0 = unwrap!(MappedUdpSocket::new(&mapping_context).result_discard());
-        let mapped_socket_1 = unwrap!(MappedUdpSocket::new(&mapping_context).result_discard());
+        let mapping_context = unwrap_result!(MappingContext::new().result_discard());
+        let mapped_socket_0 = unwrap_result!(MappedUdpSocket::new(&mapping_context).result_discard());
+        let mapped_socket_1 = unwrap_result!(MappedUdpSocket::new(&mapping_context).result_discard());
 
         let socket_0 = mapped_socket_0.socket;
         let socket_1 = mapped_socket_1.socket;
@@ -361,18 +361,18 @@ mod tests {
             let res = PunchedUdpSocket::punch_hole(socket_0,
                                                    priv_info_0,
                                                    pub_info_1);
-            unwrap!(tx_0.send(res));
+            unwrap_result!(tx_0.send(res));
         });
         let jh_1 = thread!("two_peers_hole_punch_over_loopback punch socket 1", move || {
             let res = PunchedUdpSocket::punch_hole(socket_1,
                                                    priv_info_1,
                                                    pub_info_0);
-            unwrap!(tx_1.send(res));
+            unwrap_result!(tx_1.send(res));
         });
 
         thread::sleep(Duration::from_millis(500));
-        let punched_socket_0 = unwrap!(unwrap!(rx_0.try_recv()).result_discard());
-        let punched_socket_1 = unwrap!(unwrap!(rx_1.try_recv()).result_discard());
+        let punched_socket_0 = unwrap_result!(unwrap_result!(rx_0.try_recv()).result_discard());
+        let punched_socket_1 = unwrap_result!(unwrap_result!(rx_1.try_recv()).result_discard());
 
         const DATA_LEN: usize = 8;
         let data_send: [u8; DATA_LEN] = rand::random();
@@ -380,10 +380,10 @@ mod tests {
 
         // Send data from 0 to 1
         data_recv = [0u8; 1024];
-        let n = unwrap!(punched_socket_0.socket.send_to(&data_send[..], &*punched_socket_0.peer_addr));
+        let n = unwrap_result!(punched_socket_0.socket.send_to(&data_send[..], &*punched_socket_0.peer_addr));
         assert_eq!(n, DATA_LEN);
         loop {
-            let (n, _) = unwrap!(punched_socket_1.socket.recv_from(&mut data_recv[..]));
+            let (n, _) = unwrap_result!(punched_socket_1.socket.recv_from(&mut data_recv[..]));
             match filter_udp_hole_punch_packet(&data_recv[..n]) {
                 Some(d) => {
                     assert_eq!(data_send, d);
@@ -395,10 +395,10 @@ mod tests {
 
         // Send data from 1 to 0
         data_recv = [0u8; 1024];
-        let n = unwrap!(punched_socket_1.socket.send_to(&data_send[..], &*punched_socket_1.peer_addr));
+        let n = unwrap_result!(punched_socket_1.socket.send_to(&data_send[..], &*punched_socket_1.peer_addr));
         assert_eq!(n, DATA_LEN);
         loop {
-            let (n, _) = unwrap!(punched_socket_0.socket.recv_from(&mut data_recv[..]));
+            let (n, _) = unwrap_result!(punched_socket_0.socket.recv_from(&mut data_recv[..]));
             match filter_udp_hole_punch_packet(&data_recv[..n]) {
                 Some(d) => {
                     assert_eq!(data_send, d);
@@ -408,8 +408,8 @@ mod tests {
             }
         }
 
-        unwrap!(jh_0.join());
-        unwrap!(jh_1.join());
+        unwrap_result!(jh_0.join());
+        unwrap_result!(jh_1.join());
     }
 }
 

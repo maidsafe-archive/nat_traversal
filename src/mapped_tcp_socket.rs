@@ -427,7 +427,7 @@ impl MappedTcpSocket {
             }));
         }
         for mapping_thread in mapping_threads {
-            match unwrap!(mapping_thread.join()) {
+            match unwrap_result!(mapping_thread.join()) {
                 Ok(external_addr) => {
                     endpoints.push(MappedSocketAddr {
                         addr: external_addr,
@@ -825,40 +825,40 @@ mod test {
 
     #[test]
     fn two_peers_tcp_hole_punch_over_loopback() {
-        let mapping_context = unwrap!(MappingContext::new().result_discard());
+        let mapping_context = unwrap_result!(MappingContext::new().result_discard());
 
-        let mapped_socket_0 = unwrap!(MappedTcpSocket::new(&mapping_context).result_discard());
+        let mapped_socket_0 = unwrap_result!(MappedTcpSocket::new(&mapping_context).result_discard());
         let socket_0 = mapped_socket_0.socket;
         let endpoints_0 = mapped_socket_0.endpoints;
         let (priv_info_0, pub_info_0) = gen_rendezvous_info(endpoints_0);
 
-        let mapped_socket_1 = unwrap!(MappedTcpSocket::new(&mapping_context).result_discard());
+        let mapped_socket_1 = unwrap_result!(MappedTcpSocket::new(&mapping_context).result_discard());
         let socket_1 = mapped_socket_1.socket;
         let endpoints_1 = mapped_socket_1.endpoints;
         let (priv_info_1, pub_info_1) = gen_rendezvous_info(endpoints_1);
 
         let thread_0 = thread!("two_peers_tcp_hole_punch_over_loopback_0", move || {
-            let mut stream = unwrap!(tcp_punch_hole(socket_0, priv_info_0, pub_info_1).result_discard());
+            let mut stream = unwrap_result!(tcp_punch_hole(socket_0, priv_info_0, pub_info_1).result_discard());
             let mut data = [0u8; 4];
-            let n = unwrap!(stream.write(&data));
+            let n = unwrap_result!(stream.write(&data));
             assert_eq!(n, 4);
-            let n = unwrap!(stream.read(&mut data));
+            let n = unwrap_result!(stream.read(&mut data));
             assert_eq!(n, 4);
             assert_eq!(data, [1u8; 4]);
         });
 
         let thread_1 = thread!("two_peers_tcp_hole_punch_over_loopback_1", move || {
-            let mut stream = unwrap!(tcp_punch_hole(socket_1, priv_info_1, pub_info_0).result_discard());
+            let mut stream = unwrap_result!(tcp_punch_hole(socket_1, priv_info_1, pub_info_0).result_discard());
             let mut data = [1u8; 4];
-            let n = unwrap!(stream.write(&data));
+            let n = unwrap_result!(stream.write(&data));
             assert_eq!(n, 4);
-            let n = unwrap!(stream.read(&mut data));
+            let n = unwrap_result!(stream.read(&mut data));
             assert_eq!(n, 4);
             assert_eq!(data, [0u8; 4]);
         });
 
-        unwrap!(thread_0.join());
-        unwrap!(thread_1.join());
+        unwrap_result!(thread_0.join());
+        unwrap_result!(thread_1.join());
     }
 }
 
