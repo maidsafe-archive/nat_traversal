@@ -1335,7 +1335,7 @@
             }));
         }
         <span class='kw'>for</span> <span class='ident'>mapping_thread</span> <span class='kw'>in</span> <span class='ident'>mapping_threads</span> {
-            <span class='kw'>match</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>mapping_thread</span>.<span class='ident'>join</span>()) {
+            <span class='kw'>match</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>mapping_thread</span>.<span class='ident'>join</span>()) {
                 <span class='prelude-val'>Ok</span>(<span class='ident'>external_addr</span>) <span class='op'>=&gt;</span> {
                     <span class='ident'>endpoints</span>.<span class='ident'>push</span>(<span class='ident'>MappedSocketAddr</span> {
                         <span class='ident'>addr</span>: <span class='ident'>external_addr</span>,
@@ -1733,40 +1733,40 @@
 
     <span class='attribute'>#[<span class='ident'>test</span>]</span>
     <span class='kw'>fn</span> <span class='ident'>two_peers_tcp_hole_punch_over_loopback</span>() {
-        <span class='kw'>let</span> <span class='ident'>mapping_context</span> <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>MappingContext</span>::<span class='ident'>new</span>().<span class='ident'>result_discard</span>());
+        <span class='kw'>let</span> <span class='ident'>mapping_context</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>MappingContext</span>::<span class='ident'>new</span>().<span class='ident'>result_discard</span>());
 
-        <span class='kw'>let</span> <span class='ident'>mapped_socket_0</span> <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>MappedTcpSocket</span>::<span class='ident'>new</span>(<span class='kw-2'>&amp;</span><span class='ident'>mapping_context</span>).<span class='ident'>result_discard</span>());
+        <span class='kw'>let</span> <span class='ident'>mapped_socket_0</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>MappedTcpSocket</span>::<span class='ident'>new</span>(<span class='kw-2'>&amp;</span><span class='ident'>mapping_context</span>).<span class='ident'>result_discard</span>());
         <span class='kw'>let</span> <span class='ident'>socket_0</span> <span class='op'>=</span> <span class='ident'>mapped_socket_0</span>.<span class='ident'>socket</span>;
         <span class='kw'>let</span> <span class='ident'>endpoints_0</span> <span class='op'>=</span> <span class='ident'>mapped_socket_0</span>.<span class='ident'>endpoints</span>;
         <span class='kw'>let</span> (<span class='ident'>priv_info_0</span>, <span class='ident'>pub_info_0</span>) <span class='op'>=</span> <span class='ident'>gen_rendezvous_info</span>(<span class='ident'>endpoints_0</span>);
 
-        <span class='kw'>let</span> <span class='ident'>mapped_socket_1</span> <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>MappedTcpSocket</span>::<span class='ident'>new</span>(<span class='kw-2'>&amp;</span><span class='ident'>mapping_context</span>).<span class='ident'>result_discard</span>());
+        <span class='kw'>let</span> <span class='ident'>mapped_socket_1</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>MappedTcpSocket</span>::<span class='ident'>new</span>(<span class='kw-2'>&amp;</span><span class='ident'>mapping_context</span>).<span class='ident'>result_discard</span>());
         <span class='kw'>let</span> <span class='ident'>socket_1</span> <span class='op'>=</span> <span class='ident'>mapped_socket_1</span>.<span class='ident'>socket</span>;
         <span class='kw'>let</span> <span class='ident'>endpoints_1</span> <span class='op'>=</span> <span class='ident'>mapped_socket_1</span>.<span class='ident'>endpoints</span>;
         <span class='kw'>let</span> (<span class='ident'>priv_info_1</span>, <span class='ident'>pub_info_1</span>) <span class='op'>=</span> <span class='ident'>gen_rendezvous_info</span>(<span class='ident'>endpoints_1</span>);
 
         <span class='kw'>let</span> <span class='ident'>thread_0</span> <span class='op'>=</span> <span class='macro'>thread</span><span class='macro'>!</span>(<span class='string'>&quot;two_peers_tcp_hole_punch_over_loopback_0&quot;</span>, <span class='kw'>move</span> <span class='op'>||</span> {
-            <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>stream</span> <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>tcp_punch_hole</span>(<span class='ident'>socket_0</span>, <span class='ident'>priv_info_0</span>, <span class='ident'>pub_info_1</span>).<span class='ident'>result_discard</span>());
+            <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>stream</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>tcp_punch_hole</span>(<span class='ident'>socket_0</span>, <span class='ident'>priv_info_0</span>, <span class='ident'>pub_info_1</span>).<span class='ident'>result_discard</span>());
             <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>data</span> <span class='op'>=</span> [<span class='number'>0u8</span>; <span class='number'>4</span>];
-            <span class='kw'>let</span> <span class='ident'>n</span> <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>stream</span>.<span class='ident'>write</span>(<span class='kw-2'>&amp;</span><span class='ident'>data</span>));
+            <span class='kw'>let</span> <span class='ident'>n</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>stream</span>.<span class='ident'>write</span>(<span class='kw-2'>&amp;</span><span class='ident'>data</span>));
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>n</span>, <span class='number'>4</span>);
-            <span class='kw'>let</span> <span class='ident'>n</span> <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>stream</span>.<span class='ident'>read</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>data</span>));
+            <span class='kw'>let</span> <span class='ident'>n</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>stream</span>.<span class='ident'>read</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>data</span>));
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>n</span>, <span class='number'>4</span>);
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>data</span>, [<span class='number'>1u8</span>; <span class='number'>4</span>]);
         });
 
         <span class='kw'>let</span> <span class='ident'>thread_1</span> <span class='op'>=</span> <span class='macro'>thread</span><span class='macro'>!</span>(<span class='string'>&quot;two_peers_tcp_hole_punch_over_loopback_1&quot;</span>, <span class='kw'>move</span> <span class='op'>||</span> {
-            <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>stream</span> <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>tcp_punch_hole</span>(<span class='ident'>socket_1</span>, <span class='ident'>priv_info_1</span>, <span class='ident'>pub_info_0</span>).<span class='ident'>result_discard</span>());
+            <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>stream</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>tcp_punch_hole</span>(<span class='ident'>socket_1</span>, <span class='ident'>priv_info_1</span>, <span class='ident'>pub_info_0</span>).<span class='ident'>result_discard</span>());
             <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>data</span> <span class='op'>=</span> [<span class='number'>1u8</span>; <span class='number'>4</span>];
-            <span class='kw'>let</span> <span class='ident'>n</span> <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>stream</span>.<span class='ident'>write</span>(<span class='kw-2'>&amp;</span><span class='ident'>data</span>));
+            <span class='kw'>let</span> <span class='ident'>n</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>stream</span>.<span class='ident'>write</span>(<span class='kw-2'>&amp;</span><span class='ident'>data</span>));
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>n</span>, <span class='number'>4</span>);
-            <span class='kw'>let</span> <span class='ident'>n</span> <span class='op'>=</span> <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>stream</span>.<span class='ident'>read</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>data</span>));
+            <span class='kw'>let</span> <span class='ident'>n</span> <span class='op'>=</span> <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>stream</span>.<span class='ident'>read</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>data</span>));
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>n</span>, <span class='number'>4</span>);
             <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>data</span>, [<span class='number'>0u8</span>; <span class='number'>4</span>]);
         });
 
-        <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>thread_0</span>.<span class='ident'>join</span>());
-        <span class='macro'>unwrap</span><span class='macro'>!</span>(<span class='ident'>thread_1</span>.<span class='ident'>join</span>());
+        <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>thread_0</span>.<span class='ident'>join</span>());
+        <span class='macro'>unwrap_result</span><span class='macro'>!</span>(<span class='ident'>thread_1</span>.<span class='ident'>join</span>());
     }
 }
 
