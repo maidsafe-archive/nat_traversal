@@ -107,7 +107,7 @@ quick_error! {
                      returned an error: {}", gateway_addr, err)
             cause(err)
         }
-        NewReusablyBoundSocket { err: NewReusablyBoundSocketError } {
+        NewReusablyBoundTcpSocket { err: NewReusablyBoundTcpSocketError } {
             description("Error creating a reusably bound temporary socket for mapping.")
             display("Error creating a reusably bound temporary socket for mapping: {}", err)
             cause(err)
@@ -197,9 +197,9 @@ impl From<MappedTcpSocketNewError> for io::Error {
 }
 
 quick_error! {
-    /// Errors returned by new_reusably_bound_socket
+    /// Errors returned by new_reusably_bound_tcp_socket
     #[derive(Debug)]
-    pub enum NewReusablyBoundSocketError {
+    pub enum NewReusablyBoundTcpSocketError {
         Create { err: io::Error } {
             description("Error creating socket.")
             display("Error creating socket: {}", err)
@@ -229,39 +229,39 @@ quick_error! {
     }
 }
 
-impl From<NewReusablyBoundSocketError> for io::Error {
-    fn from(e: NewReusablyBoundSocketError) -> io::Error {
+impl From<NewReusablyBoundTcpSocketError> for io::Error {
+    fn from(e: NewReusablyBoundTcpSocketError) -> io::Error {
         let err_str = format!("{}", e);
         let kind = match e {
-            NewReusablyBoundSocketError::Create { err } => err.kind(),
-            NewReusablyBoundSocketError::EnableReuseAddr { err } => err.kind(),
-            NewReusablyBoundSocketError::EnableReusePort { err } => err.kind(),
-            NewReusablyBoundSocketError::Bind { err } => err.kind(),
+            NewReusablyBoundTcpSocketError::Create { err } => err.kind(),
+            NewReusablyBoundTcpSocketError::EnableReuseAddr { err } => err.kind(),
+            NewReusablyBoundTcpSocketError::EnableReusePort { err } => err.kind(),
+            NewReusablyBoundTcpSocketError::Bind { err } => err.kind(),
         };
         io::Error::new(kind, err_str)
     }
 }
 
-pub fn new_reusably_bound_socket(local_addr: &net::SocketAddr) -> Result<net2::TcpBuilder, NewReusablyBoundSocketError> {
+pub fn new_reusably_bound_tcp_socket(local_addr: &net::SocketAddr) -> Result<net2::TcpBuilder, NewReusablyBoundTcpSocketError> {
     let socket_res = match local_addr.ip() {
         IpAddr::V4(..) => net2::TcpBuilder::new_v4(),
         IpAddr::V6(..) => net2::TcpBuilder::new_v6(),
     };
     let socket = match socket_res {
         Ok(socket) => socket,
-        Err(e) => return Err(NewReusablyBoundSocketError::Create { err: e }),
+        Err(e) => return Err(NewReusablyBoundTcpSocketError::Create { err: e }),
     };
     match socket.reuse_address(true) {
         Ok(_) => (),
-        Err(e) => return Err(NewReusablyBoundSocketError::EnableReuseAddr { err: e }),
+        Err(e) => return Err(NewReusablyBoundTcpSocketError::EnableReuseAddr { err: e }),
     };
     match socket_utils::enable_so_reuseport(&socket) {
         Ok(()) => (),
-        Err(e) => return Err(NewReusablyBoundSocketError::EnableReusePort { err: e }),
+        Err(e) => return Err(NewReusablyBoundTcpSocketError::EnableReusePort { err: e }),
     };
     match socket.bind(local_addr) {
         Ok(..) => (),
-        Err(e) => return Err(NewReusablyBoundSocketError::Bind { err: e }),
+        Err(e) => return Err(NewReusablyBoundTcpSocketError::Bind { err: e }),
     };
     Ok(socket)
 }
@@ -391,9 +391,9 @@ impl MappedTcpSocket {
         let simple_servers = mapping_context::simple_tcp_servers(&mc);
         for simple_server in simple_servers {
             mapping_threads.push(thread::spawn(move || {
-                let mapping_socket = match new_reusably_bound_socket(&local_addr) {
+                let mapping_socket = match new_reusably_bound_tcp_socket(&local_addr) {
                     Ok(mapping_socket) => mapping_socket,
-                    Err(e) => return Err(MappedTcpSocketMapWarning::NewReusablyBoundSocket { err: e }),
+                    Err(e) => return Err(MappedTcpSocketMapWarning::NewReusablyBoundTcpSocket { err: e }),
                 };
                 let mut stream = match mapping_socket.connect(&*simple_server) {
                     Ok(stream) => stream,
@@ -522,7 +522,7 @@ quick_error! {
             display("Error getting the local address of the provided socket: {}", err)
             cause(err)
         }
-        NewReusablyBoundSocket { err: NewReusablyBoundSocketError } {
+        NewReusablyBoundTcpSocket { err: NewReusablyBoundTcpSocketError } {
             description("Error binding another socket to the same local address as the provided socket.")
             display("Error binding another socket to the same local address as the provided socket: {}", err)
             cause(err)
@@ -545,7 +545,7 @@ impl From<TcpPunchHoleError> for io::Error {
         let err_str = format!("{}", e);
         let kind = match e {
             TcpPunchHoleError::SocketLocalAddr { err } => err.kind(),
-            TcpPunchHoleError::NewReusablyBoundSocket { err } => {
+            TcpPunchHoleError::NewReusablyBoundTcpSocket { err } => {
                 let err: io::Error = From::from(err);
                 err.kind()
             },
@@ -594,11 +594,11 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
     // Try connecting to every potential endpoint in a seperate thread.
     for endpoint in their_endpoints {
         let addr = endpoint.addr;
-        // Important to call new_reusably_bound_socket outside the inner thread so that it's called
+        // Important to call new_reusably_bound_tcp_socket outside the inner thread so that it's called
         // before the listen() call below.
-        let mapping_socket = match new_reusably_bound_socket(&local_addr) {
+        let mapping_socket = match new_reusably_bound_tcp_socket(&local_addr) {
             Ok(mapping_socket) => mapping_socket,
-            Err(e) => return WErr(TcpPunchHoleError::NewReusablyBoundSocket { err: e }),
+            Err(e) => return WErr(TcpPunchHoleError::NewReusablyBoundTcpSocket { err: e }),
         };
         let results_tx_clone = results_tx.clone();
         let shutdown_clone = shutdown.clone();
