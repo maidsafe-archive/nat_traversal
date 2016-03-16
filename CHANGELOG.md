@@ -1,5 +1,11 @@
 # NAT Traversal - Change Log
 
+## [0.3.1]
+- Export the following symbols: `new_reusably_bound_tcp_socket`,
+  `MappedTcpSocketMapError`, `MappedTcpSocketMapWarning`,
+  `MappedTcpSocketNewError`, `NewReusablyBoundTcpSocketError`,
+  `TcpPunchHoleWarning`, `TcpPunchHoleError`
+
 ## [0.3.0]
 - Change Simple{Tcp,Udp}HolePunchServer to use `AsRef`
 
