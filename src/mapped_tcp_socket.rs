@@ -792,8 +792,10 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
     });
     let timeout_thread_handle = timeout_thread.thread();
 
-    // Process the results that the worker threads send us.
     drop(results_tx);
+    let acceptor_addr = net::SocketAddr::new(socket_utils::ip_unspecified_to_loopback(local_addr.ip()),
+                                             local_addr.port());
+    // Process the results that the worker threads send us.
     loop {
         match results_rx.recv() {
             // All the senders have closed. This could only happen if all of the worker threads
@@ -804,7 +806,7 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
             Ok(None) => {
                 timeout_thread_handle.unpark();
                 shutdown.store(true, Ordering::SeqCst);
-                let _ = TcpStream::connect(local_addr);
+                let _ = TcpStream::connect(&acceptor_addr);
                 return WErr(TcpPunchHoleError::TimedOut { warnings: warnings });
             },
             
@@ -818,7 +820,7 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                 timeout_thread_handle.unpark();
                 shutdown.store(true, Ordering::SeqCst);
                 // Cause the acceptor to shut down.
-                let _ = TcpStream::connect(local_addr);
+                let _ = TcpStream::connect(&acceptor_addr);
 
                 let mut other_streams = Vec::new();
                 // Collect any other successful connections that may have occured simultaneously to
