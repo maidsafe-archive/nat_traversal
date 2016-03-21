@@ -37,6 +37,8 @@ use w_result::{WResult, WErr, WOk};
 use maidsafe_utilities::serialisation::{deserialise, SerialisationError};
 use time::SteadyTime;
 use time;
+use rand::random;
+use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 
 use mapping_context::MappingContext;
 use mapped_socket_addr::MappedSocketAddr;
@@ -46,6 +48,7 @@ use socket_utils;
 use mapping_context;
 use listener_message;
 use utils;
+use utils::DisplaySlice;
 
 /// A tcp socket for which we know our external endpoints.
 pub struct MappedTcpSocket {
@@ -500,17 +503,15 @@ quick_error! {
     }
 }
 
-struct DisplayWarnings<'a>(pub &'a Vec<TcpPunchHoleWarning>);
+#[derive(Debug)]
+pub struct TcpPunchHoleBrokenStream {
+    peer_addr: SocketAddr,
+    error: io::Error,
+}
 
-impl<'a> fmt::Display for DisplayWarnings<'a> {
+impl fmt::Display for TcpPunchHoleBrokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let DisplayWarnings(v) = *self;
-        try!(write!(f, "[ "));
-        for warning in v {
-            try!(write!(f, "{} ", warning));
-        }
-        try!(write!(f, "]"));
-        Ok(())
+        write!(f, "Broken stream with peer addr {} errored: {}", self.peer_addr, self.error)
     }
 }
 
@@ -535,7 +536,11 @@ quick_error! {
         TimedOut { warnings: Vec<TcpPunchHoleWarning> } {
             description("Tcp hole punching timed out without making a successful connection.")
             display("Tcp hole punching timed out without making a successful connection. The \
-                     following warnings were raised during hole punching: {}", DisplayWarnings(warnings))
+                     following warnings were raised during hole punching: {}", DisplaySlice("warning", &warnings))
+        }
+        DecideStream { errors: Vec<TcpPunchHoleBrokenStream> } {
+            description("Multiple streams were successfully punched to the peer but all of them died.")
+            display("Multiple streams were successfully punched to the peer but all of them died. {}", DisplaySlice("broken stream", &errors))
         }
     }
 }
@@ -551,6 +556,8 @@ impl From<TcpPunchHoleError> for io::Error {
             },
             TcpPunchHoleError::Listen { err } => err.kind(),
             TcpPunchHoleError::TimedOut { .. } => io::ErrorKind::TimedOut,
+            TcpPunchHoleError::DecideStream { errors }
+                => errors.first().map(|bs| bs.error.kind()).unwrap_or(io::ErrorKind::Other),
         };
         io::Error::new(kind, err_str)
     }
@@ -581,7 +588,7 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
     let shutdown = Arc::new(AtomicBool::new(false));
 
     // The channel we will use to collect the results from the many worker threads.
-    let (results_tx, results_rx) = mpsc::channel::<Option<Result<TcpStream, TcpPunchHoleWarning>>>();
+    let (results_tx, results_rx) = mpsc::channel::<Option<Result<(TcpStream, SocketAddr), TcpPunchHoleWarning>>>();
 
     let our_secret = rendezvous_info::get_priv_secret(our_priv_rendezvous_info);
     let (their_endpoints, their_secret) = rendezvous_info::decompose(their_pub_rendezvous_info);
@@ -660,7 +667,7 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                     let timeout = utils::time_duration_to_std_duration(timeout);
                     match f(timeout) {
                         Ok(stream) => {
-                            let _ = results_tx_clone.send(Some(Ok(stream)));
+                            let _ = results_tx_clone.send(Some(Ok((stream, addr))));
                             break;
                         },
                         Err(e) => {
@@ -694,7 +701,9 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                 Err(e) => {
                     match results_tx_clone.send(Some(Err(TcpPunchHoleWarning::Accept { err: e }))) {
                         Ok(()) => (),
-                        Err(_) => break,
+                        Err(_) => {
+                            break;
+                        },
                     }
                     continue;
                 },
@@ -766,7 +775,7 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                         return;
                     },
                 };
-                let _ = results_tx_clone.send(Some(Ok(stream)));
+                let _ = results_tx_clone.send(Some(Ok((stream, SocketAddr(addr)))));
             });
         }
     });
@@ -783,33 +792,129 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
     });
     let timeout_thread_handle = timeout_thread.thread();
 
+    drop(results_tx);
+    let acceptor_addr = net::SocketAddr::new(socket_utils::ip_unspecified_to_loopback(local_addr.ip()),
+                                             local_addr.port());
     // Process the results that the worker threads send us.
     loop {
         match results_rx.recv() {
+            // All the senders have closed. This could only happen if all of the worker threads
+            // panicked. Propogate the panic.
+            Err(_) => panic!("In tcp_punch_hole results_rx.recv() returned Err"),
+
             // We timed out.
             Ok(None) => {
                 timeout_thread_handle.unpark();
                 shutdown.store(true, Ordering::SeqCst);
-                let _ = TcpStream::connect(local_addr);
+                let _ = TcpStream::connect(&acceptor_addr);
                 return WErr(TcpPunchHoleError::TimedOut { warnings: warnings });
             },
-
-            // Success!
-            Ok(Some(Ok(stream))) => {
-                timeout_thread_handle.unpark();
-                shutdown.store(true, Ordering::SeqCst);
-                let _ = TcpStream::connect(local_addr);
-                return WOk(stream, warnings);
-            },
             
-            // One of the working threads raised a warning.
+            // One of the worker threads raised a warning.
             Ok(Some(Err(e))) => {
                 warnings.push(e);
             },
 
-            // All the senders have closed. This could only happen if all of the worker threads
-            // panicked.
-            Err(_) => panic!("In tcp_punch_hole results_rx.recv() returned Err"),
+            // Success!
+            Ok(Some(Ok((stream, stream_addr)))) => {
+                timeout_thread_handle.unpark();
+                shutdown.store(true, Ordering::SeqCst);
+                // Cause the acceptor to shut down.
+                let _ = TcpStream::connect(&acceptor_addr);
+
+                let mut other_streams = Vec::new();
+                // Collect any other successful connections that may have occured simultaneously to
+                // the one we've got.
+                for stream_res_opt in results_rx {
+                    match stream_res_opt {
+                        // Just the timer thread shutting down.
+                        None => (),
+                        // A worker thread had an error. But we don't care because we've already
+                        // got a successful connection.
+                        Some(Err(_)) => (),
+                        // We made another connection.
+                        Some(Ok((stream, stream_addr))) => other_streams.push((stream, stream_addr)),
+                    };
+                }
+
+                if other_streams.len() == 0 {
+                    return WOk(stream, warnings);
+                }
+                else {
+                    // We have more than one stream. Both sides need to agree on which stream to
+                    // keep and which streams to discard. To decide, we write and read a random u64
+                    // to each stream, sum the read and written values, and take the stream with
+                    // the highest sum.
+                    
+                    let mut errors = Vec::new();
+                    other_streams.push((stream, stream_addr));
+
+                    // Write the random u64 to each stream.
+                    let streams: Vec<(TcpStream, SocketAddr, u64)> = other_streams.into_iter().filter_map(|(mut stream, stream_addr)| {
+                        let w = random();
+                        match stream.write_u64::<BigEndian>(w) {
+                            Ok(()) => (),
+                            Err(e) => {
+                                errors.push(TcpPunchHoleBrokenStream {
+                                    peer_addr: stream_addr,
+                                    error: e,
+                                });
+                                return None;
+                            },
+                        };
+                        Some((stream, stream_addr, w))
+                    }).collect();
+
+                    // Read the random u64 from each stream while keeping hold of the stream with
+                    // the highest sum so far.
+                    let stream_opt = streams.into_iter().fold(None, |opt, (mut this_stream, this_stream_addr, w)| {
+                        // Calculate the sum for this stream.
+                        let this_sum = match this_stream.read_u64::<BigEndian>() {
+                            Ok(r) => r.wrapping_add(w),
+                            Err(e) => {
+                                errors.push(TcpPunchHoleBrokenStream {
+                                    peer_addr: this_stream_addr,
+                                    error: e,
+                                });
+                                return opt;
+                            },
+                        };
+                        // If the sum is greater than the current highest (or we don't have a
+                        // current highest yet), replace the highest stream and sum with this
+                        // stream and sum.
+                        match opt {
+                            Some((top_stream, top_sum)) => {
+                                if this_sum > top_sum {
+                                    Some((this_stream, this_sum))
+                                }
+                                else {
+                                    Some((top_stream, top_sum))
+                                }
+                            },
+                            None => Some((this_stream, this_sum))
+                        }
+                    });
+
+                    match stream_opt {
+                        // Return the chosen stream.
+                        Some((stream, _sum)) => {
+                            warnings.extend(errors.into_iter().map(|bs| {
+                                TcpPunchHoleWarning::StreamIo {
+                                    peer_addr: bs.peer_addr,
+                                    err: bs.error,
+                                }
+                            }));
+                            return WOk(stream, warnings);
+                        },
+                        // Every stream died while deciding which stream to use.
+                        None => {
+                            return WErr(TcpPunchHoleError::DecideStream {
+                                errors: errors,
+                            });
+                        }
+                    }
+                }
+            },
         }
     }
 }
@@ -825,20 +930,20 @@ mod test {
 
     #[test]
     fn two_peers_tcp_hole_punch_over_loopback() {
-        let mapping_context = unwrap_result!(MappingContext::new().result_discard());
+        let mapping_context = unwrap_result!(MappingContext::new().result_log());
 
-        let mapped_socket_0 = unwrap_result!(MappedTcpSocket::new(&mapping_context).result_discard());
+        let mapped_socket_0 = unwrap_result!(MappedTcpSocket::new(&mapping_context).result_log());
         let socket_0 = mapped_socket_0.socket;
         let endpoints_0 = mapped_socket_0.endpoints;
         let (priv_info_0, pub_info_0) = gen_rendezvous_info(endpoints_0);
 
-        let mapped_socket_1 = unwrap_result!(MappedTcpSocket::new(&mapping_context).result_discard());
+        let mapped_socket_1 = unwrap_result!(MappedTcpSocket::new(&mapping_context).result_log());
         let socket_1 = mapped_socket_1.socket;
         let endpoints_1 = mapped_socket_1.endpoints;
         let (priv_info_1, pub_info_1) = gen_rendezvous_info(endpoints_1);
 
         let thread_0 = thread!("two_peers_tcp_hole_punch_over_loopback_0", move || {
-            let mut stream = unwrap_result!(tcp_punch_hole(socket_0, priv_info_0, pub_info_1).result_discard());
+            let mut stream = unwrap_result!(tcp_punch_hole(socket_0, priv_info_0, pub_info_1).result_log());
             let mut data = [0u8; 4];
             let n = unwrap_result!(stream.write(&data));
             assert_eq!(n, 4);
@@ -848,7 +953,7 @@ mod test {
         });
 
         let thread_1 = thread!("two_peers_tcp_hole_punch_over_loopback_1", move || {
-            let mut stream = unwrap_result!(tcp_punch_hole(socket_1, priv_info_1, pub_info_0).result_discard());
+            let mut stream = unwrap_result!(tcp_punch_hole(socket_1, priv_info_1, pub_info_0).result_log());
             let mut data = [1u8; 4];
             let n = unwrap_result!(stream.write(&data));
             assert_eq!(n, 4);

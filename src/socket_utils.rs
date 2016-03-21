@@ -92,6 +92,31 @@ pub fn ipv6_is_unspecified(addr: &Ipv6Addr) -> bool {
     addr.segments() == [0, 0, 0, 0, 0, 0, 0, 0]
 }
 
+pub fn ipv4_unspecified_to_loopback(addr: Ipv4Addr) -> Ipv4Addr {
+    if ipv4_is_unspecified(&addr) {
+        Ipv4Addr::new(127, 0, 0, 1)
+    }
+    else {
+        addr
+    }
+}
+
+pub fn ipv6_unspecified_to_loopback(addr: Ipv6Addr) -> Ipv6Addr {
+    if ipv6_is_unspecified(&addr) {
+        Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)
+    }
+    else {
+        addr
+    }
+}
+
+pub fn ip_unspecified_to_loopback(addr: IpAddr) -> IpAddr {
+    match addr {
+        IpAddr::V4(addr_v4) => IpAddr::V4(ipv4_unspecified_to_loopback(addr_v4)),
+        IpAddr::V6(addr_v6) => IpAddr::V6(ipv6_unspecified_to_loopback(addr_v6)),
+    }
+}
+
 // TODO(canndrew): Remove this once #[feature(ip)] is stable
 pub fn ipv4_is_loopback(addr: &Ipv4Addr) -> bool {
     addr.octets()[0] == 127
