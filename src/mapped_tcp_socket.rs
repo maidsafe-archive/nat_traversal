@@ -841,8 +841,15 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                     return WOk(stream, warnings);
                 }
                 else {
+                    // We have more than one stream. Both sides need to agree on which stream to
+                    // keep and which streams to discard. To decide, we write and read a random u64
+                    // to each stream, sum the read and written values, and take the stream with
+                    // the highest sum.
+                    
                     let mut errors = Vec::new();
                     other_streams.push((stream, stream_addr));
+
+                    // Write the random u64 to each stream.
                     let streams: Vec<(TcpStream, SocketAddr, u64)> = other_streams.into_iter().filter_map(|(mut stream, stream_addr)| {
                         let w = random();
                         match stream.write_u64::<BigEndian>(w) {
@@ -857,7 +864,11 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                         };
                         Some((stream, stream_addr, w))
                     }).collect();
+
+                    // Read the random u64 from each stream while keeping hold of the stream with
+                    // the highest sum so far.
                     let stream_opt = streams.into_iter().fold(None, |opt, (mut this_stream, this_stream_addr, w)| {
+                        // Calculate the sum for this stream.
                         let this_sum = match this_stream.read_u64::<BigEndian>() {
                             Ok(r) => r.wrapping_add(w),
                             Err(e) => {
@@ -868,6 +879,9 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                                 return opt;
                             },
                         };
+                        // If the sum is greater than the current highest (or we don't have a
+                        // current highest yet), replace the highest stream and sum with this
+                        // stream and sum.
                         match opt {
                             Some((top_stream, top_sum)) => {
                                 if this_sum > top_sum {
@@ -880,7 +894,9 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                             None => Some((this_stream, this_sum))
                         }
                     });
+
                     match stream_opt {
+                        // Return the chosen stream.
                         Some((stream, _sum)) => {
                             warnings.extend(errors.into_iter().map(|bs| {
                                 TcpPunchHoleWarning::StreamIo {
@@ -890,6 +906,7 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                             }));
                             return WOk(stream, warnings);
                         },
+                        // Every stream died while deciding which stream to use.
                         None => {
                             return WErr(TcpPunchHoleError::DecideStream {
                                 errors: errors,
