@@ -18,6 +18,7 @@
 use std::io;
 use std::net::{TcpStream, UdpSocket, IpAddr, Ipv4Addr, Ipv6Addr};
 use std::net;
+use std::time::Duration as StdDuration;
 #[cfg(target_family = "windows")]
 use std::mem;
 use socket_addr::SocketAddr;
@@ -47,9 +48,14 @@ impl RecvUntil for UdpSocket {
                 try!(self.set_read_timeout(old_timeout));
                 return Ok(None);
             }
-            let timeout = deadline - current_time;
-            let timeout = utils::time_duration_to_std_duration(timeout);
-            try!(self.set_read_timeout(Some(timeout)));
+            {
+                let timeout = deadline - current_time;
+                let mut timeout = utils::time_duration_to_std_duration(timeout);
+                if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
+                    timeout = StdDuration::new(0, 1);
+                }
+                try!(self.set_read_timeout(Some(timeout)));
+            }
 
             match self.recv_from(buf) {
                 Ok((bytes_len, addr)) => {
