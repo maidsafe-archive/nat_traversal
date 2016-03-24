@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["MappedUdpSocket","A bound udp socket for which we know our external endpoints."]]});
