@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Literals","A prefix extracted from a compiled regular expression."]]});
