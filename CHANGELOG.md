@@ -1,5 +1,9 @@
 # NAT Traversal - Change Log
 
+## [0.3.2]
+- TCP rendezvous fixes
+- Windows fixes
+
 ## [0.3.1]
 - Export the following symbols: `new_reusably_bound_tcp_socket`,
   `MappedTcpSocketMapError`, `MappedTcpSocketMapWarning`,
