@@ -390,45 +390,72 @@ impl MappedTcpSocket {
             },
         };
         
+        let (results_tx, results_rx) = mpsc::channel();
         let mut mapping_threads = Vec::new();
         let simple_servers = mapping_context::simple_tcp_servers(&mc);
         for simple_server in simple_servers {
+            let results_tx = results_tx.clone();
             mapping_threads.push(thread::spawn(move || {
-                let mapping_socket = match new_reusably_bound_tcp_socket(&local_addr) {
-                    Ok(mapping_socket) => mapping_socket,
-                    Err(e) => return Err(MappedTcpSocketMapWarning::NewReusablyBoundTcpSocket { err: e }),
-                };
-                let mut stream = match mapping_socket.connect(&*simple_server) {
-                    Ok(stream) => stream,
-                    Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketConnect {
-                        addr: simple_server,
-                        err: e
-                    }),
-                };
-                let send_data = listener_message::REQUEST_MAGIC_CONSTANT;
-                // TODO(canndrew): What should we do if we get a partial write?
-                let _ = match stream.write(&send_data[..]) {
-                    Ok(n) => n,
-                    Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketWrite { err: e }),
-                };
+                let map = move || {
+                    let mapping_socket = match new_reusably_bound_tcp_socket(&local_addr) {
+                        Ok(mapping_socket) => mapping_socket,
+                        Err(e) => return Err(MappedTcpSocketMapWarning::NewReusablyBoundTcpSocket { err: e }),
+                    };
+                    let mut stream = match mapping_socket.connect(&*simple_server) {
+                        Ok(stream) => stream,
+                        Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketConnect {
+                            addr: simple_server,
+                            err: e
+                        }),
+                    };
+                    let send_data = listener_message::REQUEST_MAGIC_CONSTANT;
+                    // TODO(canndrew): What should we do if we get a partial write?
+                    let _ = match stream.write(&send_data[..]) {
+                        Ok(n) => n,
+                        Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketWrite { err: e }),
+                    };
 
-                const MAX_DATAGRAM_SIZE: usize = 256;
-                let mut recv_data = [0u8; MAX_DATAGRAM_SIZE];
-                let n = match stream.read(&mut recv_data[..]) {
-                    Ok(n) => n,
-                    Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketRead { err: e }),
+                    const MAX_DATAGRAM_SIZE: usize = 256;
+                    let mut recv_data = [0u8; MAX_DATAGRAM_SIZE];
+                    let n = match stream.read(&mut recv_data[..]) {
+                        Ok(n) => n,
+                        Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketRead { err: e }),
+                    };
+                    let listener_message::EchoExternalAddr { external_addr } = match deserialise::<listener_message::EchoExternalAddr>(&recv_data[..n]) {
+                        Ok(msg) => msg,
+                        Err(e) => return Err(MappedTcpSocketMapWarning::Deserialise {
+                            addr: simple_server,
+                            err: e,
+                            response: recv_data[..n].to_vec(),
+                        }),
+                    };
+                    Ok(external_addr)
                 };
-                let listener_message::EchoExternalAddr { external_addr } = match deserialise::<listener_message::EchoExternalAddr>(&recv_data[..n]) {
-                    Ok(msg) => msg,
-                    Err(e) => return Err(MappedTcpSocketMapWarning::Deserialise {
-                        addr: simple_server,
-                        err: e,
-                        response: recv_data[..n].to_vec(),
-                    }),
-                };
-                Ok(external_addr)
+                let _ = results_tx.send(map());
             }));
         }
+        drop(results_tx);
+
+        let mut num_results = 0;
+        for result in results_rx {
+            match result {
+                Ok(external_addr) => {
+                    endpoints.push(MappedSocketAddr {
+                        addr: external_addr,
+                        nat_restricted: true,
+                    });
+                    num_results += 1;
+                    if num_results >= 2 {
+                        break;
+                    }
+                },
+                Err(e) => {
+                    warnings.push(e);
+                },
+            }
+        }
+
+        /*
         for mapping_thread in mapping_threads {
             match unwrap_result!(mapping_thread.join()) {
                 Ok(external_addr) => {
@@ -442,6 +469,8 @@ impl MappedTcpSocket {
                 },
             }
         }
+        */
+
         WOk(MappedTcpSocket {
             socket: socket,
             endpoints: endpoints,
