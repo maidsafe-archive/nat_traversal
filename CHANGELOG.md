@@ -1,5 +1,8 @@
 # NAT Traversal - Change Log
 
+## [0.3.3]
+- Tcp mapping and punching functions time-out eagerly
+
 ## [0.3.2]
 - TCP rendezvous fixes
 - Windows fixes
