@@ -394,6 +394,21 @@ impl MappedTcpSocket {
         let mut mapping_threads = Vec::new();
         let simple_servers = mapping_context::simple_tcp_servers(&mc);
         for simple_server in simple_servers {
+            // TODO(canndrew): Remove this. Ideally we should use servers that are on private
+            // networks in case we're behind multiple private networks. This will require using
+            // non-blocking IO however.
+            match simple_server.ip() {
+                IpAddr::V4(ipv4_addr) => {
+                    if ipv4_addr.is_private() || ipv4_addr.is_loopback() {
+                        continue;
+                    };
+                },
+                IpAddr::V6(ipv6_addr) => {
+                    if ipv6_addr.is_loopback() {
+                        continue;
+                    };
+                },
+            };
             let results_tx = results_tx.clone();
             mapping_threads.push(thread::spawn(move || {
                 let map = move || {
@@ -454,22 +469,6 @@ impl MappedTcpSocket {
                 },
             }
         }
-
-        /*
-        for mapping_thread in mapping_threads {
-            match unwrap_result!(mapping_thread.join()) {
-                Ok(external_addr) => {
-                    endpoints.push(MappedSocketAddr {
-                        addr: external_addr,
-                        nat_restricted: true,
-                    });
-                },
-                Err(e) => {
-                    warnings.push(e);
-                },
-            }
-        }
-        */
 
         WOk(MappedTcpSocket {
             socket: socket,
