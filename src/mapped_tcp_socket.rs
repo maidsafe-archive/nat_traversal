@@ -390,58 +390,86 @@ impl MappedTcpSocket {
             },
         };
         
+        let (results_tx, results_rx) = mpsc::channel();
         let mut mapping_threads = Vec::new();
         let simple_servers = mapping_context::simple_tcp_servers(&mc);
         for simple_server in simple_servers {
+            // TODO(canndrew): Remove this. Ideally we should use servers that are on private
+            // networks in case we're behind multiple private networks. This will require using
+            // non-blocking IO however.
+            match simple_server.ip() {
+                IpAddr::V4(ipv4_addr) => {
+                    if ipv4_addr.is_private() || ipv4_addr.is_loopback() {
+                        continue;
+                    };
+                },
+                IpAddr::V6(ipv6_addr) => {
+                    if ipv6_addr.is_loopback() {
+                        continue;
+                    };
+                },
+            };
+            let results_tx = results_tx.clone();
             mapping_threads.push(thread::spawn(move || {
-                let mapping_socket = match new_reusably_bound_tcp_socket(&local_addr) {
-                    Ok(mapping_socket) => mapping_socket,
-                    Err(e) => return Err(MappedTcpSocketMapWarning::NewReusablyBoundTcpSocket { err: e }),
-                };
-                let mut stream = match mapping_socket.connect(&*simple_server) {
-                    Ok(stream) => stream,
-                    Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketConnect {
-                        addr: simple_server,
-                        err: e
-                    }),
-                };
-                let send_data = listener_message::REQUEST_MAGIC_CONSTANT;
-                // TODO(canndrew): What should we do if we get a partial write?
-                let _ = match stream.write(&send_data[..]) {
-                    Ok(n) => n,
-                    Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketWrite { err: e }),
-                };
+                let map = move || {
+                    let mapping_socket = match new_reusably_bound_tcp_socket(&local_addr) {
+                        Ok(mapping_socket) => mapping_socket,
+                        Err(e) => return Err(MappedTcpSocketMapWarning::NewReusablyBoundTcpSocket { err: e }),
+                    };
+                    let mut stream = match mapping_socket.connect(&*simple_server) {
+                        Ok(stream) => stream,
+                        Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketConnect {
+                            addr: simple_server,
+                            err: e
+                        }),
+                    };
+                    let send_data = listener_message::REQUEST_MAGIC_CONSTANT;
+                    // TODO(canndrew): What should we do if we get a partial write?
+                    let _ = match stream.write(&send_data[..]) {
+                        Ok(n) => n,
+                        Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketWrite { err: e }),
+                    };
 
-                const MAX_DATAGRAM_SIZE: usize = 256;
-                let mut recv_data = [0u8; MAX_DATAGRAM_SIZE];
-                let n = match stream.read(&mut recv_data[..]) {
-                    Ok(n) => n,
-                    Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketRead { err: e }),
+                    const MAX_DATAGRAM_SIZE: usize = 256;
+                    let mut recv_data = [0u8; MAX_DATAGRAM_SIZE];
+                    let n = match stream.read(&mut recv_data[..]) {
+                        Ok(n) => n,
+                        Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketRead { err: e }),
+                    };
+                    let listener_message::EchoExternalAddr { external_addr } = match deserialise::<listener_message::EchoExternalAddr>(&recv_data[..n]) {
+                        Ok(msg) => msg,
+                        Err(e) => return Err(MappedTcpSocketMapWarning::Deserialise {
+                            addr: simple_server,
+                            err: e,
+                            response: recv_data[..n].to_vec(),
+                        }),
+                    };
+                    Ok(external_addr)
                 };
-                let listener_message::EchoExternalAddr { external_addr } = match deserialise::<listener_message::EchoExternalAddr>(&recv_data[..n]) {
-                    Ok(msg) => msg,
-                    Err(e) => return Err(MappedTcpSocketMapWarning::Deserialise {
-                        addr: simple_server,
-                        err: e,
-                        response: recv_data[..n].to_vec(),
-                    }),
-                };
-                Ok(external_addr)
+                let _ = results_tx.send(map());
             }));
         }
-        for mapping_thread in mapping_threads {
-            match unwrap_result!(mapping_thread.join()) {
+        drop(results_tx);
+
+        let mut num_results = 0;
+        for result in results_rx {
+            match result {
                 Ok(external_addr) => {
                     endpoints.push(MappedSocketAddr {
                         addr: external_addr,
                         nat_restricted: true,
                     });
+                    num_results += 1;
+                    if num_results >= 2 {
+                        break;
+                    }
                 },
                 Err(e) => {
                     warnings.push(e);
                 },
             }
         }
+
         WOk(MappedTcpSocket {
             socket: socket,
             endpoints: endpoints,
@@ -581,7 +609,7 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
 
     // The total timeout for the entire function.
     let start_time = SteadyTime::now();
-    let deadline = start_time + time::Duration::seconds(20);
+    let deadline = start_time + time::Duration::seconds(10);
 
     let mut warnings = Vec::new();
 
@@ -817,7 +845,6 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
 
             // Success!
             Ok(Some(Ok((stream, stream_addr)))) => {
-                timeout_thread_handle.unpark();
                 shutdown.store(true, Ordering::SeqCst);
                 // Cause the acceptor to shut down.
                 let _ = TcpStream::connect(&acceptor_addr);
@@ -827,8 +854,8 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                 // the one we've got.
                 for stream_res_opt in results_rx {
                     match stream_res_opt {
-                        // Just the timer thread shutting down.
-                        None => (),
+                        // Timed out. Assume all other connections failed.
+                        None => break,
                         // A worker thread had an error. But we don't care because we've already
                         // got a successful connection.
                         Some(Err(_)) => (),
@@ -836,6 +863,8 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                         Some(Ok((stream, stream_addr))) => other_streams.push((stream, stream_addr)),
                     };
                 }
+
+                timeout_thread_handle.unpark();
 
                 if other_streams.len() == 0 {
                     return WOk(stream, warnings);
