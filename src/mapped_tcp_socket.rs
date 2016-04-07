@@ -845,7 +845,6 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
 
             // Success!
             Ok(Some(Ok((stream, stream_addr)))) => {
-                timeout_thread_handle.unpark();
                 shutdown.store(true, Ordering::SeqCst);
                 // Cause the acceptor to shut down.
                 let _ = TcpStream::connect(&acceptor_addr);
@@ -864,6 +863,8 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                         Some(Ok((stream, stream_addr))) => other_streams.push((stream, stream_addr)),
                     };
                 }
+
+                timeout_thread_handle.unpark();
 
                 if other_streams.len() == 0 {
                     return WOk(stream, warnings);
