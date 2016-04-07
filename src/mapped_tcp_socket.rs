@@ -610,7 +610,7 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
 
     // The total timeout for the entire function.
     let start_time = SteadyTime::now();
-    let deadline = start_time + time::Duration::seconds(20);
+    let deadline = start_time + time::Duration::seconds(10);
 
     let mut warnings = Vec::new();
 
@@ -856,8 +856,8 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                 // the one we've got.
                 for stream_res_opt in results_rx {
                     match stream_res_opt {
-                        // Just the timer thread shutting down.
-                        None => (),
+                        // Timed out. Assume all other connections failed.
+                        None => break,
                         // A worker thread had an error. But we don't care because we've already
                         // got a successful connection.
                         Some(Err(_)) => (),
