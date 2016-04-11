@@ -64,6 +64,8 @@ quick_error! {
     /// Errors returned by MappedTcpSocket::map
     #[derive(Debug)]
     pub enum MappedTcpSocketMapError {
+        /// Error getting local address of the socket. Most likely, bind() has not been called on
+        /// the socket.
         SocketLocalAddr { err: io::Error } {
             description("Error getting local address of socket \
                          (have you called bind() on the socket?)")
@@ -90,6 +92,7 @@ quick_error! {
     /// Warnings raised by MappedTcpSocket::map
     #[derive(Debug)]
     pub enum MappedTcpSocketMapWarning {
+        /// Error searching for an IGD gateway.
         FindGateway {
             err: igd::SearchError
         } {
@@ -99,6 +102,7 @@ quick_error! {
                      err)
             cause(err)
         }
+        /// Error mapping external address and port through IGD gateway.
         GetExternalPort {
             gateway_addr: net::SocketAddrV4,
             err: igd::AddAnyPortError,
@@ -110,11 +114,13 @@ quick_error! {
                      returned an error: {}", gateway_addr, err)
             cause(err)
         }
+        /// Error creating a reusably bound temporary socket for mapping.
         NewReusablyBoundTcpSocket { err: NewReusablyBoundTcpSocketError } {
             description("Error creating a reusably bound temporary socket for mapping.")
             display("Error creating a reusably bound temporary socket for mapping: {}", err)
             cause(err)
         }
+        /// Error connecting to a mapping server.
         MappingSocketConnect {
             addr: SocketAddr,
             err: io::Error
@@ -124,16 +130,19 @@ quick_error! {
                      error: {}", addr, err)
             cause(err)
         }
+        /// Error writing to temporary socket.
         MappingSocketWrite { err: io::Error } {
             description("Error writing to temporary socket.")
             display("Error writing to temporary socket: {}", err)
             cause(err)
         }
+        /// Error reading from temporary socket.
         MappingSocketRead { err: io::Error } {
             description("Error reading from temporary socket.")
             display("Error reading from temporary socket: {}", err)
             cause(err)
         }
+        /// Error deserialising a response from a mapping server.
         Deserialise { addr: SocketAddr, err: SerialisationError, response: Vec<u8> } {
             description("Error deserialising a response from a mapping server. Are you sure \
                          you've connected to a mapping server?")
@@ -154,26 +163,31 @@ quick_error! {
     /// Errors returned by MappedTcpSocket::new
     #[derive(Debug)]
     pub enum MappedTcpSocketNewError {
+        /// Error creating TCP socket.
         CreateSocket { err: io::Error } {
             description("Error creating TCP socket")
             display("Error creating TCP socket: {}", err)
             cause(err)
         }
+        /// Error enabling SO_REUSEADDR on new socket.
         EnableReuseAddr { err: io::Error } {
             description("Error enabling SO_REUSEADDR on new socket")
             display("Error enabling SO_REUSEADDR on new socket: {}", err)
             cause(err)
         }
+        /// Error enabling SO_REUSEPORT (or equivalent) on new socket.
         EnableReusePort { err: io::Error } {
-            description("Error enabling SO_REUSEPORT on new socket")
-            display("Error enabling SO_REUSEPORT on new socket: {}", err)
+            description("Error enabling SO_REUSEPORT (or equivalent) on new socket")
+            display("Error enabling SO_REUSEPORT (or equivalent) on new socket: {}", err)
             cause(err)
         }
+        /// Error binding new socket.
         Bind { err: io::Error } {
             description("Error binding new socket")
             display("Error binding new socket: {}", err)
             cause(err)
         }
+        /// Error mapping new socket.
         Map { err: MappedTcpSocketMapError } {
             description("Error mapping new socket")
             display("Error mapping new socket: {}", err)
@@ -203,23 +217,28 @@ quick_error! {
     /// Errors returned by new_reusably_bound_tcp_socket
     #[derive(Debug)]
     pub enum NewReusablyBoundTcpSocketError {
+        /// Error creating socket.
         Create { err: io::Error } {
             description("Error creating socket.")
             display("Error creating socket: {}", err)
             cause(err)
         }
+        /// Error setting SO_REUSEADDR on socket.
         EnableReuseAddr { err: io::Error } {
             description("Error setting SO_REUSEADDR on socket.")
             display("Error setting SO_REUSEADDR on socket. \
                      Got IO error: {}", err)
             cause(err)
         }
+        /// Error setting SO_REUSEPORT (or equivalent) on socket.
         EnableReusePort { err: io::Error } {
-            description("Error setting SO_REUSEPORT on socket.")
-            display("Error setting SO_REUSEPORT on socket. \
+            description("Error setting SO_REUSEPORT (or equivalent) on socket.")
+            display("Error setting SO_REUSEPORT (or equivalent) on socket. \
                      Got IO error: {}", err)
             cause(err)
         }
+        /// Error binding new socket to the provided address. Likely a socket was already bound to
+        /// this address without SO_REUSEPORT and SO_REUSEADDR being set.
         Bind { err: io::Error } {
             description("Error binding new socket to the provided address. Likely a socket was \
                          already bound to this address without SO_REUSEPORT and SO_REUSEADDR \
@@ -504,26 +523,31 @@ impl MappedTcpSocket {
 quick_error! {
     #[derive(Debug)]
     pub enum TcpPunchHoleWarning {
+        /// Connecting to endpoint failed.
         Connect { peer_addr: SocketAddr, err: io::Error } {
             description("Connecting to endpoint failed.")
             display("Connecting to endpoint {} failed: {}", peer_addr, err)
             cause(err)
         }
+        /// Error accepting an incoming connection.
         Accept { err: io::Error } {
             description("Error accepting an incoming connection.")
             display("Error accepting an incoming connection: {}", err)
             cause(err)
         }
+        /// Error setting the timeout on a connected stream.
         StreamSetTimeout { err: io::Error } {
             description("Error setting the timeout on a connected stream.")
             display("Error setting the timeout on a connected stream: {}", err)
             cause(err)
         }
+        /// IO error communicating with a connected host.
         StreamIo { peer_addr: SocketAddr, err: io::Error } {
             description("IO error communicating with a connected host.")
             display("IO error communicating with connected host at {}: {}", peer_addr, err)
             cause(err)
         }
+        /// A connected host provided an invalid response to the handshake.
         InvalidResponse { peer_addr: SocketAddr, data: [u8; 4] } {
             description("A connected host provided an invalid response to the handshake.")
             display("The connected host at {} provided an invalid response to the handshake: {:?}", peer_addr, data)
@@ -546,26 +570,31 @@ impl fmt::Display for TcpPunchHoleBrokenStream {
 quick_error! {
     #[derive(Debug)]
     pub enum TcpPunchHoleError {
+        /// Error getting the local address of the provided socket.
         SocketLocalAddr { err: io::Error } {
             description("Error getting the local address of the provided socket.")
             display("Error getting the local address of the provided socket: {}", err)
             cause(err)
         }
+        /// Error binding another socket to the same local address as the provided socket.
         NewReusablyBoundTcpSocket { err: NewReusablyBoundTcpSocketError } {
             description("Error binding another socket to the same local address as the provided socket.")
             display("Error binding another socket to the same local address as the provided socket: {}", err)
             cause(err)
         }
+        /// Error listening on the provided socket.
         Listen { err: io::Error } {
             description("Error listening on the provided socket.")
             display("Error listening on the provided socket: {}", err)
             cause(err)
         }
+        /// Tcp hole punching timed out without making a successful connection.
         TimedOut { warnings: Vec<TcpPunchHoleWarning> } {
             description("Tcp hole punching timed out without making a successful connection.")
             display("Tcp hole punching timed out without making a successful connection. The \
                      following warnings were raised during hole punching: {}", DisplaySlice("warning", &warnings))
         }
+        /// Multiple streams were successfully punched to the peer but all of them died.
         DecideStream { errors: Vec<TcpPunchHoleBrokenStream> } {
             description("Multiple streams were successfully punched to the peer but all of them died.")
             display("Multiple streams were successfully punched to the peer but all of them died. {}", DisplaySlice("broken stream", &errors))
