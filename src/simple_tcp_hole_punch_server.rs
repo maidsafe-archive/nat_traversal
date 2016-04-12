@@ -30,6 +30,7 @@ use maidsafe_utilities::serialisation::serialise;
 use maidsafe_utilities::thread::RaiiThreadJoiner;
 use w_result::{WResult, WOk, WErr};
 use socket_addr::SocketAddr;
+use time::SteadyTime;
 
 use listener_message;
 use socket_utils;
@@ -90,12 +91,12 @@ impl From<SimpleTcpHolePunchServerNewError> for io::Error {
 impl<T: AsRef<MappingContext>> SimpleTcpHolePunchServer<T> {
     /// Create a new server. This will spawn a background thread which will serve requests until
     /// the server is dropped.
-    pub fn new(mapping_context: T)
+    pub fn new(mapping_context: T, deadline: SteadyTime)
         -> WResult<SimpleTcpHolePunchServer<T>,
                    MappedTcpSocketMapWarning,
                    SimpleTcpHolePunchServerNewError>
     {
-        let (mapped_socket, warnings) = match MappedTcpSocket::new(mapping_context.as_ref()) {
+        let (mapped_socket, warnings) = match MappedTcpSocket::new(mapping_context.as_ref(), deadline) {
             WOk(mapped_socket, warnings) => (mapped_socket, warnings),
             WErr(e) => {
                 return WErr(SimpleTcpHolePunchServerNewError::CreateMappedSocket { err: e });

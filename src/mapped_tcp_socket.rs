@@ -19,7 +19,7 @@
 //! NAT traversal utilities.
 
 use std::net;
-use std::net::{IpAddr, TcpStream};
+use std::net::{IpAddr, Ipv4Addr, TcpStream};
 use std::io;
 use std::io::{Read, Write};
 use std::time::Duration;
@@ -36,7 +36,6 @@ use socket_addr::SocketAddr;
 use w_result::{WResult, WErr, WOk};
 use maidsafe_utilities::serialisation::{deserialise, SerialisationError};
 use time::SteadyTime;
-use time;
 use rand::random;
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 
@@ -163,28 +162,10 @@ quick_error! {
     /// Errors returned by MappedTcpSocket::new
     #[derive(Debug)]
     pub enum MappedTcpSocketNewError {
-        /// Error creating TCP socket.
-        CreateSocket { err: io::Error } {
-            description("Error creating TCP socket")
-            display("Error creating TCP socket: {}", err)
-            cause(err)
-        }
-        /// Error enabling SO_REUSEADDR on new socket.
-        EnableReuseAddr { err: io::Error } {
-            description("Error enabling SO_REUSEADDR on new socket")
-            display("Error enabling SO_REUSEADDR on new socket: {}", err)
-            cause(err)
-        }
-        /// Error enabling SO_REUSEPORT (or equivalent) on new socket.
-        EnableReusePort { err: io::Error } {
-            description("Error enabling SO_REUSEPORT (or equivalent) on new socket")
-            display("Error enabling SO_REUSEPORT (or equivalent) on new socket: {}", err)
-            cause(err)
-        }
-        /// Error binding new socket.
-        Bind { err: io::Error } {
-            description("Error binding new socket")
-            display("Error binding new socket: {}", err)
+        /// Error creating a reusably bound tcp socket.
+        NewReusablyBoundTcpSocket { err: NewReusablyBoundTcpSocketError } {
+            description("Error creating a reusably bound tcp socket.")
+            display("Error creating a reusably bound tcp socket: {}", err)
             cause(err)
         }
         /// Error mapping new socket.
@@ -200,10 +181,10 @@ impl From<MappedTcpSocketNewError> for io::Error {
     fn from(e: MappedTcpSocketNewError) -> io::Error {
         let err_str = format!("{}", e);
         let kind = match e {
-            MappedTcpSocketNewError::CreateSocket { err } => err.kind(),
-            MappedTcpSocketNewError::EnableReuseAddr { err } => err.kind(),
-            MappedTcpSocketNewError::EnableReusePort { err } => err.kind(),
-            MappedTcpSocketNewError::Bind { err } => err.kind(),
+            MappedTcpSocketNewError::NewReusablyBoundTcpSocket { err } => {
+                let err: io::Error = From::from(err);
+                err.kind()
+            },
             MappedTcpSocketNewError::Map { err } => {
                 let err: io::Error = From::from(err);
                 err.kind()
@@ -291,7 +272,7 @@ pub fn new_reusably_bound_tcp_socket(local_addr: &net::SocketAddr) -> Result<net
 impl MappedTcpSocket {
     /// Map an existing tcp socket. The socket must bound but not connected. It must have been
     /// bound with SO_REUSEADDR and SO_REUSEPORT options (or equivalent) set.
-    pub fn map(socket: net2::TcpBuilder, mc: &MappingContext)
+    pub fn map(socket: net2::TcpBuilder, mc: &MappingContext, deadline: SteadyTime)
                -> WResult<MappedTcpSocket, MappedTcpSocketMapWarning, MappedTcpSocketMapError>
     {
         let mut endpoints = Vec::new();
@@ -465,30 +446,37 @@ impl MappedTcpSocket {
                     };
                     Ok(external_addr)
                 };
-                let _ = results_tx.send(map());
+                let _ = results_tx.send(Some(map()));
             }));
         }
-        drop(results_tx);
+        let timeout_thread = thread!("MappedTcpSocket::map timeout", move || {
+            let now = SteadyTime::now();
+            if deadline > now {
+                let timeout = deadline - now;
+                let timeout = utils::time_duration_to_std_duration(timeout);
+                thread::park_timeout(timeout);
+            }
+            let _ = results_tx.send(None);
+        });
 
-        let mut num_results = 0;
         for result in results_rx {
             match result {
-                Ok(external_addr) => {
+                Some(Ok(external_addr)) => {
                     endpoints.push(MappedSocketAddr {
                         addr: external_addr,
                         nat_restricted: true,
                     });
-                    num_results += 1;
-                    if num_results >= 2 {
-                        break;
-                    }
                 },
-                Err(e) => {
+                Some(Err(e)) => {
                     warnings.push(e);
+                },
+                None => {
+                    break;
                 },
             }
         }
 
+        timeout_thread.thread().unpark();
         WOk(MappedTcpSocket {
             socket: socket,
             endpoints: endpoints,
@@ -496,27 +484,16 @@ impl MappedTcpSocket {
     }
 
     /// Create a new `MappedTcpSocket`
-    pub fn new(mc: &MappingContext) -> WResult<MappedTcpSocket, MappedTcpSocketMapWarning, MappedTcpSocketNewError> {
-        let socket = match net2::TcpBuilder::new_v4() {
+    pub fn new(mc: &MappingContext, deadline: SteadyTime)
+            -> WResult<MappedTcpSocket, MappedTcpSocketMapWarning, MappedTcpSocketNewError>
+    {
+        let unspec_addr = net::SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 0);
+        let socket = match new_reusably_bound_tcp_socket(&unspec_addr) {
             Ok(socket) => socket,
-            Err(e) => return WErr(MappedTcpSocketNewError::CreateSocket { err: e }),
-        };
-        match socket.reuse_address(true) {
-            Ok(_) => (),
-            Err(e) => return WErr(MappedTcpSocketNewError::EnableReuseAddr { err: e }),
-        };
-        match socket_utils::enable_so_reuseport(&socket) {
-            Ok(()) => (),
-            Err(e) => return WErr(MappedTcpSocketNewError::EnableReusePort { err: e }),
-        };
-        // need to connect to a bunch of guys in parallel and get our addresses.
-        // need a bunch of sockets that are bound to the same local port.
-        match socket.bind("0.0.0.0:0") {
-            Ok(_)  => (),
-            Err(e) => return WErr(MappedTcpSocketNewError::Bind { err: e }),
+            Err(e) => return WErr(MappedTcpSocketNewError::NewReusablyBoundTcpSocket { err: e }),
         };
 
-        MappedTcpSocket::map(socket, mc).map_err(|e| MappedTcpSocketNewError::Map { err: e })
+        MappedTcpSocket::map(socket, mc, deadline).map_err(|e| MappedTcpSocketNewError::Map { err: e })
     }
 }
 
@@ -624,7 +601,8 @@ impl From<TcpPunchHoleError> for io::Error {
 /// `MappedTcpSocket`.
 pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                       our_priv_rendezvous_info: PrivRendezvousInfo,
-                      their_pub_rendezvous_info: PubRendezvousInfo)
+                      their_pub_rendezvous_info: PubRendezvousInfo,
+                      deadline: SteadyTime)
                       -> WResult<TcpStream, TcpPunchHoleWarning, TcpPunchHoleError> {
     // In order to do tcp hole punching we connect to all of their endpoints in parallel while
     // simultaneously listening. All the sockets we use must be bound to the same local address. As
@@ -635,10 +613,6 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
     // doesn't provide any way to convert a non-blocking socket back into a blocking socket. So
     // we're stuck with spawning (and then detaching) loads of threads. Setting the read/write
     // timeouts should prevent the detached threads from leaking indefinitely.
-
-    // The total timeout for the entire function.
-    let start_time = SteadyTime::now();
-    let deadline = start_time + time::Duration::seconds(10);
 
     let mut warnings = Vec::new();
 
@@ -982,26 +956,29 @@ mod test {
     use super::*;
 
     use std::io::{Read, Write};
+    use time;
 
     use mapping_context::MappingContext;
     use rendezvous_info::gen_rendezvous_info;
 
     #[test]
     fn two_peers_tcp_hole_punch_over_loopback() {
+        let deadline = time::SteadyTime::now() + time::Duration::seconds(5);
         let mapping_context = unwrap_result!(MappingContext::new().result_log());
 
-        let mapped_socket_0 = unwrap_result!(MappedTcpSocket::new(&mapping_context).result_log());
+        let mapped_socket_0 = unwrap_result!(MappedTcpSocket::new(&mapping_context, deadline).result_log());
         let socket_0 = mapped_socket_0.socket;
         let endpoints_0 = mapped_socket_0.endpoints;
         let (priv_info_0, pub_info_0) = gen_rendezvous_info(endpoints_0);
 
-        let mapped_socket_1 = unwrap_result!(MappedTcpSocket::new(&mapping_context).result_log());
+        let mapped_socket_1 = unwrap_result!(MappedTcpSocket::new(&mapping_context, deadline).result_log());
         let socket_1 = mapped_socket_1.socket;
         let endpoints_1 = mapped_socket_1.endpoints;
         let (priv_info_1, pub_info_1) = gen_rendezvous_info(endpoints_1);
 
+        let deadline = time::SteadyTime::now() + time::Duration::seconds(5);
         let thread_0 = thread!("two_peers_tcp_hole_punch_over_loopback_0", move || {
-            let mut stream = unwrap_result!(tcp_punch_hole(socket_0, priv_info_0, pub_info_1).result_log());
+            let mut stream = unwrap_result!(tcp_punch_hole(socket_0, priv_info_0, pub_info_1, deadline).result_log());
             let mut data = [0u8; 4];
             let n = unwrap_result!(stream.write(&data));
             assert_eq!(n, 4);
@@ -1011,7 +988,7 @@ mod test {
         });
 
         let thread_1 = thread!("two_peers_tcp_hole_punch_over_loopback_1", move || {
-            let mut stream = unwrap_result!(tcp_punch_hole(socket_1, priv_info_1, pub_info_0).result_log());
+            let mut stream = unwrap_result!(tcp_punch_hole(socket_1, priv_info_1, pub_info_0, deadline).result_log());
             let mut data = [1u8; 4];
             let n = unwrap_result!(stream.write(&data));
             assert_eq!(n, 4);

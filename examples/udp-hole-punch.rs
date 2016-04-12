@@ -42,6 +42,7 @@ extern crate nat_traversal;
 extern crate w_result;
 extern crate rustc_serialize;
 extern crate socket_addr;
+extern crate time;
 
 use std::net::ToSocketAddrs;
 
@@ -108,7 +109,10 @@ fn main() {
     }
 
     // Now we use our context to create a mapped udp socket.
-    let mapped_socket = match MappedUdpSocket::new(&mapping_context) {
+    let mapped_socket = match MappedUdpSocket::new(
+                            &mapping_context,
+                            time::SteadyTime::now() + time::Duration::seconds(5)
+    ) {
         WOk(mapped_socket, warnings) => {
             for warning in warnings {
                 println!("Warning when mapping socket: {}", warning);
@@ -170,7 +174,10 @@ fn main() {
 
     // Now we use the socket, our private rendezvous info and their public rendezvous info to
     // complete the connection.
-    let punched_socket = match PunchedUdpSocket::punch_hole(socket, our_priv_info, their_pub_info) {
+    let deadline = time::SteadyTime::now() + time::Duration::seconds(5);
+    let punched_socket = match PunchedUdpSocket::punch_hole(socket, our_priv_info,
+                                                            their_pub_info, deadline)
+    {
         WOk(punched_socket, warnings) => {
             for warning in warnings {
                 println!("Warning when punching hole: {}", warning);
