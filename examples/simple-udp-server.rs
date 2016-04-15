@@ -37,7 +37,8 @@
 
 extern crate nat_traversal;
 extern crate w_result;
-extern crate time;
+
+use std::time::{Instant, Duration};
 
 use nat_traversal::{MappingContext, SimpleUdpHolePunchServer};
 use w_result::{WOk, WErr};
@@ -61,7 +62,7 @@ fn main() {
     };
 
     // Now we create the server.
-    let deadline = time::SteadyTime::now() + time::Duration::seconds(3);
+    let deadline = Instant::now() + Duration::from_secs(3);
     let simple_server = match SimpleUdpHolePunchServer::new(Box::new(mapping_context), deadline) {
         WOk(simple_server, warnings) => {
             for warning in warnings {

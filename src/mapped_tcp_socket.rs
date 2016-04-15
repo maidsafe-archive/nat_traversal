@@ -22,7 +22,7 @@ use std::net;
 use std::net::{IpAddr, Ipv4Addr, TcpStream};
 use std::io;
 use std::io::{Read, Write};
-use std::time::Duration;
+use std::time::{Instant, Duration};
 use std::thread;
 use std::str;
 use std::sync::mpsc;
@@ -35,7 +35,6 @@ use net2;
 use socket_addr::SocketAddr;
 use w_result::{WResult, WErr, WOk};
 use maidsafe_utilities::serialisation::{deserialise, SerialisationError};
-use time::SteadyTime;
 use rand::random;
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 
@@ -46,7 +45,6 @@ use rendezvous_info;
 use socket_utils;
 use mapping_context;
 use listener_message;
-use utils;
 use utils::DisplaySlice;
 
 /// A tcp socket for which we know our external endpoints.
@@ -272,7 +270,7 @@ pub fn new_reusably_bound_tcp_socket(local_addr: &net::SocketAddr) -> Result<net
 impl MappedTcpSocket {
     /// Map an existing tcp socket. The socket must bound but not connected. It must have been
     /// bound with SO_REUSEADDR and SO_REUSEPORT options (or equivalent) set.
-    pub fn map(socket: net2::TcpBuilder, mc: &MappingContext, deadline: SteadyTime)
+    pub fn map(socket: net2::TcpBuilder, mc: &MappingContext, deadline: Instant)
                -> WResult<MappedTcpSocket, MappedTcpSocketMapWarning, MappedTcpSocketMapError>
     {
         let mut endpoints = Vec::new();
@@ -450,10 +448,9 @@ impl MappedTcpSocket {
             }));
         }
         let timeout_thread = thread!("MappedTcpSocket::map timeout", move || {
-            let now = SteadyTime::now();
+            let now = Instant::now();
             if deadline > now {
                 let timeout = deadline - now;
-                let timeout = utils::time_duration_to_std_duration(timeout);
                 thread::park_timeout(timeout);
             }
             let _ = results_tx.send(None);
@@ -484,7 +481,7 @@ impl MappedTcpSocket {
     }
 
     /// Create a new `MappedTcpSocket`
-    pub fn new(mc: &MappingContext, deadline: SteadyTime)
+    pub fn new(mc: &MappingContext, deadline: Instant)
             -> WResult<MappedTcpSocket, MappedTcpSocketMapWarning, MappedTcpSocketNewError>
     {
         let unspec_addr = net::SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 0);
@@ -602,7 +599,7 @@ impl From<TcpPunchHoleError> for io::Error {
 pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                       our_priv_rendezvous_info: PrivRendezvousInfo,
                       their_pub_rendezvous_info: PubRendezvousInfo,
-                      deadline: SteadyTime)
+                      deadline: Instant)
                       -> WResult<TcpStream, TcpPunchHoleWarning, TcpPunchHoleError> {
     // In order to do tcp hole punching we connect to all of their endpoints in parallel while
     // simultaneously listening. All the sockets we use must be bound to the same local address. As
@@ -689,13 +686,12 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                 Ok(stream)
             };
             loop {
-                let now = SteadyTime::now();
+                let now = Instant::now();
                 if now >= deadline || shutdown_clone.load(Ordering::SeqCst) {
                     break;
                 }
                 else {
                     let timeout = deadline - now;
-                    let timeout = utils::time_duration_to_std_duration(timeout);
                     match f(timeout) {
                         Ok(stream) => {
                             let _ = results_tx_clone.send(Some(Ok((stream, addr))));
@@ -743,13 +739,12 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
             // Spawn a new thread here to prevent someone from connecting then not sending any data
             // and preventing us from accepting any more connections.
             let results_tx_clone = results_tx_clone.clone();
-            let now = SteadyTime::now();
+            let now = Instant::now();
             if now >= deadline {
                 break;
             };
             let _ = thread!("tcp_punch_hole listen handshake", move || {
                 let timeout = deadline - now;
-                let timeout = utils::time_duration_to_std_duration(timeout);
                 match stream.set_write_timeout(Some(timeout)) {
                     Ok(()) => (),
                     Err(e) => {
@@ -815,10 +810,11 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
     // TODO(canndrew): We won't need to do this one this is fixed: https://github.com/rust-lang/rfcs/issues/962
     let results_tx_clone = results_tx.clone();
     let timeout_thread = thread!("tcp_punch_hole timeout", move || {
-        let now = SteadyTime::now();
-        let timeout = deadline - now;
-        let timeout = utils::time_duration_to_std_duration(timeout);
-        thread::park_timeout(timeout);
+        let now = Instant::now();
+        if deadline > now {
+            let timeout = deadline - now;
+            thread::park_timeout(timeout);
+        }
         let _ = results_tx_clone.send(None);
     });
     let timeout_thread_handle = timeout_thread.thread();
@@ -956,14 +952,14 @@ mod test {
     use super::*;
 
     use std::io::{Read, Write};
-    use time;
+    use std::time::{Instant, Duration};
 
     use mapping_context::MappingContext;
     use rendezvous_info::gen_rendezvous_info;
 
     #[test]
     fn two_peers_tcp_hole_punch_over_loopback() {
-        let deadline = time::SteadyTime::now() + time::Duration::seconds(5);
+        let deadline = Instant::now() + Duration::from_secs(5);
         let mapping_context = unwrap_result!(MappingContext::new().result_log());
 
         let mapped_socket_0 = unwrap_result!(MappedTcpSocket::new(&mapping_context, deadline).result_log());
@@ -976,7 +972,7 @@ mod test {
         let endpoints_1 = mapped_socket_1.endpoints;
         let (priv_info_1, pub_info_1) = gen_rendezvous_info(endpoints_1);
 
-        let deadline = time::SteadyTime::now() + time::Duration::seconds(5);
+        let deadline = Instant::now() + Duration::from_secs(5);
         let thread_0 = thread!("two_peers_tcp_hole_punch_over_loopback_0", move || {
             let mut stream = unwrap_result!(tcp_punch_hole(socket_0, priv_info_0, pub_info_1, deadline).result_log());
             let mut data = [0u8; 4];

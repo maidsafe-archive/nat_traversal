@@ -49,7 +49,6 @@ extern crate byteorder;
 extern crate net2;
 extern crate rand;
 extern crate rustc_serialize;
-extern crate time;
 extern crate void;
 #[macro_use]
 extern crate maidsafe_utilities;

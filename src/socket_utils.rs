@@ -18,42 +18,36 @@
 use std::io;
 use std::net::{TcpStream, UdpSocket, IpAddr, Ipv4Addr, Ipv6Addr};
 use std::net;
-use std::time::Duration as StdDuration;
+use std::time::Instant;
 #[cfg(target_family = "windows")]
 use std::mem;
 use socket_addr::SocketAddr;
 use std::io::ErrorKind;
 use net2;
 
-use utils;
-
 /// A self interruptable receive trait that allows a timed-out period to be defined
 pub trait RecvUntil {
     /// After specified timed-out period, the blocking receive method shall return with an error
     fn recv_until(&self,
                   buf: &mut [u8],
-                  deadline: ::time::SteadyTime)
+                  deadline: Instant)
                   -> io::Result<Option<(usize, SocketAddr)>>;
 }
 
 impl RecvUntil for UdpSocket {
     fn recv_until(&self,
                   buf: &mut [u8],
-                  deadline: ::time::SteadyTime)
+                  deadline: Instant)
                   -> io::Result<Option<(usize, SocketAddr)>> {
         let old_timeout = try!(self.read_timeout());
         loop {
-            let current_time = ::time::SteadyTime::now();
+            let current_time = Instant::now();
             if current_time >= deadline {
                 try!(self.set_read_timeout(old_timeout));
                 return Ok(None);
             }
             {
                 let timeout = deadline - current_time;
-                let mut timeout = utils::time_duration_to_std_duration(timeout);
-                if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-                    timeout = StdDuration::new(0, 1);
-                }
                 try!(self.set_read_timeout(Some(timeout)));
             }
 

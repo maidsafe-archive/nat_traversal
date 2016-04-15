@@ -22,15 +22,13 @@ use std::io;
 use std::net::UdpSocket;
 use std::net;
 use std::net::IpAddr;
-use std::time::Duration;
+use std::time::{Instant, Duration};
 use std::collections::HashSet;
 
 use igd;
-use time;
 use maidsafe_utilities::serialisation::deserialise;
 use socket_addr::SocketAddr;
 use w_result::{WResult, WOk, WErr};
-use time::SteadyTime;
 
 use listener_message;
 use mapping_context;
@@ -165,7 +163,7 @@ impl From<MappedUdpSocketNewError> for io::Error {
 
 impl MappedUdpSocket {
     /// Map an existing `UdpSocket`.
-    pub fn map(socket: UdpSocket, mc: &MappingContext, deadline: SteadyTime)
+    pub fn map(socket: UdpSocket, mc: &MappingContext, deadline: Instant)
                -> WResult<MappedUdpSocket, MappedUdpSocketMapWarning, MappedUdpSocketMapError>
     {
         let mut endpoints = Vec::new();
@@ -292,11 +290,11 @@ impl MappedUdpSocket {
                                                                       .into_iter().collect();
 
         // Ping all the simple servers and waiting for a response.
-        let start_time = SteadyTime::now();
+        let start_time = Instant::now();
         let mut recv_deadline = start_time;
         let mut deadline = deadline;
         while recv_deadline < deadline && simple_servers.len() > 0 {
-            recv_deadline = recv_deadline + time::Duration::milliseconds(250);
+            recv_deadline = recv_deadline + Duration::from_millis(250);
 
             // TODO(canndrew): We should limit the number of servers that we send to. If the user
             // has added two thousand servers we really don't want to be pinging all of them. We
@@ -332,7 +330,7 @@ impl MappedUdpSocket {
                     // let is_global = recv_addr.is_global();
                     let is_global = false;
                     if is_global {
-                        let now = SteadyTime::now();
+                        let now = Instant::now();
                         if deadline > now {
                             deadline = now + (now - deadline) / 2;
                         }
@@ -360,7 +358,7 @@ impl MappedUdpSocket {
     }
 
     /// Create a new `MappedUdpSocket`
-    pub fn new(mc: &MappingContext, deadline: SteadyTime)
+    pub fn new(mc: &MappingContext, deadline: Instant)
             -> WResult<MappedUdpSocket, MappedUdpSocketMapWarning, MappedUdpSocketNewError>
     {
         // Sometimes we might bind a socket to a random port then find that we have an IGD gateway

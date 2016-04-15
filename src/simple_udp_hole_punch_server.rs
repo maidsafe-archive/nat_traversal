@@ -20,14 +20,13 @@
 
 use std::io;
 use std::net::UdpSocket;
-use std::time::Duration;
+use std::time::{Instant, Duration};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use maidsafe_utilities::serialisation::serialise;
 use maidsafe_utilities::thread::RaiiThreadJoiner;
 use w_result::{WResult, WOk, WErr};
-use time::SteadyTime;
 
 use socket_addr::SocketAddr;
 use listener_message;
@@ -85,7 +84,7 @@ impl From<SimpleUdpHolePunchServerNewError> for io::Error {
 impl<T: AsRef<MappingContext>> SimpleUdpHolePunchServer<T> {
     /// Create a new server. This will spawn a background thread which will serve requests until
     /// the server is dropped.
-    pub fn new(mapping_context: T, deadline: SteadyTime)
+    pub fn new(mapping_context: T, deadline: Instant)
         -> WResult<SimpleUdpHolePunchServer<T>,
                    MappedUdpSocketMapWarning,
                    SimpleUdpHolePunchServerNewError>
