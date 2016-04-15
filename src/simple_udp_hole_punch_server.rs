@@ -20,7 +20,7 @@
 
 use std::io;
 use std::net::UdpSocket;
-use std::time::Duration;
+use std::time::{Instant, Duration};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -84,12 +84,12 @@ impl From<SimpleUdpHolePunchServerNewError> for io::Error {
 impl<T: AsRef<MappingContext>> SimpleUdpHolePunchServer<T> {
     /// Create a new server. This will spawn a background thread which will serve requests until
     /// the server is dropped.
-    pub fn new(mapping_context: T)
+    pub fn new(mapping_context: T, deadline: Instant)
         -> WResult<SimpleUdpHolePunchServer<T>,
                    MappedUdpSocketMapWarning,
                    SimpleUdpHolePunchServerNewError>
     {
-        let (mapped_socket, warnings) = match MappedUdpSocket::new(mapping_context.as_ref()) {
+        let (mapped_socket, warnings) = match MappedUdpSocket::new(mapping_context.as_ref(), deadline) {
             WOk(mapped_socket, warnings) => (mapped_socket, warnings),
             WErr(e) => {
                 return WErr(SimpleUdpHolePunchServerNewError::CreateMappedSocket { err: e });

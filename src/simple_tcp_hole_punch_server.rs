@@ -21,7 +21,7 @@
 use std::io;
 use std::io::{Read, Write};
 use std::net::{TcpStream, TcpListener};
-use std::time::Duration;
+use std::time::{Instant, Duration};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::net;
@@ -90,12 +90,12 @@ impl From<SimpleTcpHolePunchServerNewError> for io::Error {
 impl<T: AsRef<MappingContext>> SimpleTcpHolePunchServer<T> {
     /// Create a new server. This will spawn a background thread which will serve requests until
     /// the server is dropped.
-    pub fn new(mapping_context: T)
+    pub fn new(mapping_context: T, deadline: Instant)
         -> WResult<SimpleTcpHolePunchServer<T>,
                    MappedTcpSocketMapWarning,
                    SimpleTcpHolePunchServerNewError>
     {
-        let (mapped_socket, warnings) = match MappedTcpSocket::new(mapping_context.as_ref()) {
+        let (mapped_socket, warnings) = match MappedTcpSocket::new(mapping_context.as_ref(), deadline) {
             WOk(mapped_socket, warnings) => (mapped_socket, warnings),
             WErr(e) => {
                 return WErr(SimpleTcpHolePunchServerNewError::CreateMappedSocket { err: e });

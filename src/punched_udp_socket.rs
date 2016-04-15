@@ -21,10 +21,9 @@
 use maidsafe_utilities::serialisation::{deserialise, SerialisationError, serialise};
 use std::io;
 use std::net::UdpSocket;
-use std;
+use std::time::{Instant, Duration};
 use std::thread;
 
-use time;
 use socket_addr::SocketAddr;
 use w_result::{WResult, WOk, WErr};
 
@@ -131,7 +130,8 @@ impl PunchedUdpSocket {
     /// Punch a udp socket using a mapped socket and the peer's rendezvous info.
     pub fn punch_hole(socket: UdpSocket,
                       our_priv_rendezvous_info: PrivRendezvousInfo,
-                      their_pub_rendezvous_info: PubRendezvousInfo)
+                      their_pub_rendezvous_info: PubRendezvousInfo,
+                      deadline: Instant)
         -> WResult<PunchedUdpSocket, UdpPunchHoleWarning, UdpPunchHoleError>
     {
         let mut warnings = Vec::new();
@@ -205,14 +205,11 @@ impl PunchedUdpSocket {
         // Spend TOTAL_TIMEOUT_MS trying to get their actual address that we can
         // communicate with.
 
-        const DELAY_BETWEEN_RESENDS_MS: i64 = 600;
-        const TOTAL_TIMEOUT_MS: i64 = 10000;
+        const DELAY_BETWEEN_RESENDS_MS: u64 = 600;
 
-        let start_time = time::SteadyTime::now();
-        let mut deadline = start_time;
-        let total_deadline = start_time + time::Duration::milliseconds(TOTAL_TIMEOUT_MS);
-        while deadline < total_deadline {
-            deadline = deadline + time::Duration::milliseconds(DELAY_BETWEEN_RESENDS_MS);
+        let mut recv_deadline = Instant::now();
+        while recv_deadline < deadline {
+            recv_deadline = recv_deadline + Duration::from_millis(DELAY_BETWEEN_RESENDS_MS);
             let mut i = 0;
             while i < endpoints.len() {
                 // TODO(canndrew): How should we handle partial write?
@@ -230,7 +227,7 @@ impl PunchedUdpSocket {
             }
             // Keep reading until it's time to send to all endpoints again.
             loop {
-                let (read_size, addr) = match socket.recv_until(&mut recv_data[..], deadline) {
+                let (read_size, addr) = match socket.recv_until(&mut recv_data[..], recv_deadline) {
                     Ok(Some(x)) => x,
                     Ok(None) => break,
                     Err(e) => return WErr(UdpPunchHoleError::Io { err: e }),
@@ -261,7 +258,7 @@ impl PunchedUdpSocket {
                             let mut attempts = 0;
                             let mut successful_attempts = 0;
                             let mut error = None;
-                            while attempts < 2 || time::SteadyTime::now() < total_deadline {
+                            while attempts < 2 || Instant::now() < deadline {
                                 attempts += 1;
                                 match socket.send_to(&send_data[..], &*addr) {
                                     Ok(n) => {
@@ -278,7 +275,7 @@ impl PunchedUdpSocket {
                                         }
                                     }
                                 };
-                                thread::sleep(std::time::Duration::from_millis(100));
+                                thread::sleep(Duration::from_millis(100));
                             }
                             if successful_attempts == 0 {
                                 let ret = match error {
@@ -335,7 +332,7 @@ pub fn filter_udp_hole_punch_packet(data: &[u8]) -> Option<&[u8]> {
 mod tests {
     use std::sync::mpsc;
     use std::thread;
-    use std::time::Duration;
+    use std::time::{Instant, Duration};
     use rand;
 
     use mapping_context::MappingContext;
@@ -345,9 +342,10 @@ mod tests {
 
     #[test]
     fn two_peers_udp_hole_punch_over_loopback() {
+        let deadline = Instant::now() + Duration::from_secs(3);
         let mapping_context = unwrap_result!(MappingContext::new().result_discard());
-        let mapped_socket_0 = unwrap_result!(MappedUdpSocket::new(&mapping_context).result_discard());
-        let mapped_socket_1 = unwrap_result!(MappedUdpSocket::new(&mapping_context).result_discard());
+        let mapped_socket_0 = unwrap_result!(MappedUdpSocket::new(&mapping_context, deadline).result_discard());
+        let mapped_socket_1 = unwrap_result!(MappedUdpSocket::new(&mapping_context, deadline).result_discard());
 
         let socket_0 = mapped_socket_0.socket;
         let socket_1 = mapped_socket_1.socket;
@@ -357,16 +355,19 @@ mod tests {
         let (tx_0, rx_0) = mpsc::channel();
         let (tx_1, rx_1) = mpsc::channel();
 
+        let deadline = Instant::now() + Duration::from_secs(3);
         let jh_0 = thread!("two_peers_hole_punch_over_loopback punch socket 0", move || {
             let res = PunchedUdpSocket::punch_hole(socket_0,
                                                    priv_info_0,
-                                                   pub_info_1);
+                                                   pub_info_1,
+                                                   deadline);
             unwrap_result!(tx_0.send(res));
         });
         let jh_1 = thread!("two_peers_hole_punch_over_loopback punch socket 1", move || {
             let res = PunchedUdpSocket::punch_hole(socket_1,
                                                    priv_info_1,
-                                                   pub_info_0);
+                                                   pub_info_0,
+                                                   deadline);
             unwrap_result!(tx_1.send(res));
         });
 

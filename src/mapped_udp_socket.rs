@@ -22,11 +22,10 @@ use std::io;
 use std::net::UdpSocket;
 use std::net;
 use std::net::IpAddr;
-use std::time::Duration;
+use std::time::{Instant, Duration};
 use std::collections::HashSet;
 
 use igd;
-use time;
 use maidsafe_utilities::serialisation::deserialise;
 use socket_addr::SocketAddr;
 use w_result::{WResult, WOk, WErr};
@@ -164,7 +163,7 @@ impl From<MappedUdpSocketNewError> for io::Error {
 
 impl MappedUdpSocket {
     /// Map an existing `UdpSocket`.
-    pub fn map(socket: UdpSocket, mc: &MappingContext)
+    pub fn map(socket: UdpSocket, mc: &MappingContext, deadline: Instant)
                -> WResult<MappedUdpSocket, MappedUdpSocketMapWarning, MappedUdpSocketMapError>
     {
         let mut endpoints = Vec::new();
@@ -291,11 +290,11 @@ impl MappedUdpSocket {
                                                                       .into_iter().collect();
 
         // Ping all the simple servers and waiting for a response.
-        let start_time = time::SteadyTime::now();
-        let mut deadline = start_time;
-        let mut final_deadline = start_time + time::Duration::seconds(2);
-        while deadline < final_deadline && simple_servers.len() > 0 {
-            deadline = deadline + time::Duration::milliseconds(250);
+        let start_time = Instant::now();
+        let mut recv_deadline = start_time;
+        let mut deadline = deadline;
+        while recv_deadline < deadline && simple_servers.len() > 0 {
+            recv_deadline = recv_deadline + Duration::from_millis(250);
 
             // TODO(canndrew): We should limit the number of servers that we send to. If the user
             // has added two thousand servers we really don't want to be pinging all of them. We
@@ -310,7 +309,7 @@ impl MappedUdpSocket {
             };
             let mut recv_data = [0u8; MAX_DATAGRAM_SIZE];
             loop {
-                let (read_size, recv_addr) = match socket.recv_until(&mut recv_data[..], deadline) {
+                let (read_size, recv_addr) = match socket.recv_until(&mut recv_data[..], recv_deadline) {
                     Ok(Some(res)) => res,
                     Ok(None) => break,
                     Err(e) => return WErr(MappedUdpSocketMapError::RecvError { err: e }),
@@ -331,7 +330,10 @@ impl MappedUdpSocket {
                     // let is_global = recv_addr.is_global();
                     let is_global = false;
                     if is_global {
-                        final_deadline = start_time + time::Duration::seconds(1);
+                        let now = Instant::now();
+                        if deadline > now {
+                            deadline = now + (now - deadline) / 2;
+                        }
                     };
 
                     // Add this endpoint if we don't already know about it. We may have found it
@@ -356,7 +358,7 @@ impl MappedUdpSocket {
     }
 
     /// Create a new `MappedUdpSocket`
-    pub fn new(mc: &MappingContext)
+    pub fn new(mc: &MappingContext, deadline: Instant)
             -> WResult<MappedUdpSocket, MappedUdpSocketMapWarning, MappedUdpSocketNewError>
     {
         // Sometimes we might bind a socket to a random port then find that we have an IGD gateway
@@ -369,7 +371,7 @@ impl MappedUdpSocket {
                 Ok(socket) => socket,
                 Err(e) => return WErr(MappedUdpSocketNewError::CreateSocket { err: e }),
             };
-            let (socket, warnings) = match Self::map(socket, mc) {
+            let (socket, warnings) = match Self::map(socket, mc, deadline) {
                 WOk(s, ws) => (s, ws),
                 WErr(e) => return WErr(MappedUdpSocketNewError::MapSocket { err: e }),
             };
