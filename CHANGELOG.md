@@ -1,5 +1,8 @@
 # NAT Traversal - Change Log
 
+## [0.4.0]
+- All blocking methods take a deadline parameter
+
 ## [0.3.3]
 - Tcp mapping and punching functions time-out eagerly
 
