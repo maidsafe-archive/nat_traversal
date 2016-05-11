@@ -193,7 +193,7 @@ impl From<MappedTcpSocketNewError> for io::Error {
             MappedTcpSocketNewError::Map { err } => {
                 let err: io::Error = From::from(err);
                 err.kind()
-            },
+            }
         };
         io::Error::new(kind, err_str)
     }
@@ -245,7 +245,9 @@ impl From<NewReusablyBoundTcpSocketError> for io::Error {
     }
 }
 
-pub fn new_reusably_bound_tcp_socket(local_addr: &net::SocketAddr) -> Result<net2::TcpBuilder, NewReusablyBoundTcpSocketError> {
+pub fn new_reusably_bound_tcp_socket
+    (local_addr: &net::SocketAddr)
+     -> Result<net2::TcpBuilder, NewReusablyBoundTcpSocketError> {
     let socket_res = match local_addr.ip() {
         IpAddr::V4(..) => net2::TcpBuilder::new_v4(),
         IpAddr::V6(..) => net2::TcpBuilder::new_v6(),
@@ -272,9 +274,9 @@ pub fn new_reusably_bound_tcp_socket(local_addr: &net::SocketAddr) -> Result<net
 impl MappedTcpSocket {
     /// Map an existing tcp socket. The socket must bound but not connected. It must have been
     /// bound with SO_REUSEADDR and SO_REUSEPORT options (or equivalent) set.
-    pub fn map(socket: net2::TcpBuilder, mc: &MappingContext)
-               -> WResult<MappedTcpSocket, MappedTcpSocketMapWarning, MappedTcpSocketMapError>
-    {
+    pub fn map(socket: net2::TcpBuilder,
+               mc: &MappingContext)
+               -> WResult<MappedTcpSocket, MappedTcpSocketMapWarning, MappedTcpSocketMapError> {
         let mut endpoints = Vec::new();
         let mut warnings = Vec::new();
 
@@ -289,22 +291,23 @@ impl MappedTcpSocket {
                     // interface. We also ask the interface's IGD gateway (if there is one) for
                     // an address.
                     for iface_v4 in mapping_context::interfaces_v4(&mc) {
-                        let local_iface_addr = net::SocketAddrV4::new(iface_v4.addr, local_addr.port());
+                        let local_iface_addr = net::SocketAddrV4::new(iface_v4.addr,
+                                                                      local_addr.port());
                         endpoints.push(MappedSocketAddr {
                             addr: SocketAddr(net::SocketAddr::V4(local_iface_addr)),
                             nat_restricted: false,
                         });
                         if let Some(gateway) = iface_v4.gateway {
                             match gateway.get_any_address(igd::PortMappingProtocol::TCP,
-                                                          local_iface_addr, 0,
-                                                          "rust nat_traversal")
-                            {
+                                                          local_iface_addr,
+                                                          0,
+                                                          "rust nat_traversal") {
                                 Ok(external_addr) => {
                                     endpoints.push(MappedSocketAddr {
                                         addr: SocketAddr(net::SocketAddr::V4(external_addr)),
                                         nat_restricted: false,
                                     });
-                                },
+                                }
                                 Err(e) => {
                                     warnings.push(MappedTcpSocketMapWarning::GetExternalPort {
                                         gateway_addr: gateway.addr,
@@ -313,9 +316,8 @@ impl MappedTcpSocket {
                                 }
                             }
                         };
-                    };
-                }
-                else {
+                    }
+                } else {
                     let local_addr_v4 = net::SocketAddrV4::new(ipv4_addr, local_addr.port());
                     endpoints.push(MappedSocketAddr {
                         addr: SocketAddr(net::SocketAddr::V4(local_addr_v4)),
@@ -331,17 +333,18 @@ impl MappedTcpSocket {
                             gateway_opt_opt = Some(iface_v4.gateway);
                             break;
                         }
-                    };
+                    }
                     let gateway_opt = match gateway_opt_opt {
                         Some(gateway_opt) => gateway_opt,
                         // We don't where this local address came from so search for an IGD gateway
                         // at it.
                         None => {
-                            match igd::search_gateway_from_timeout(ipv4_addr, Duration::from_secs(1)) {
+                            match igd::search_gateway_from_timeout(ipv4_addr,
+                                                                   Duration::from_secs(1)) {
                                 Ok(gateway) => Some(gateway),
                                 Err(e) => {
                                     warnings.push(MappedTcpSocketMapWarning::FindGateway {
-                                        err: e
+                                        err: e,
                                     });
                                     None
                                 }
@@ -351,15 +354,15 @@ impl MappedTcpSocket {
                     // If we have a gateway, ask it for an external address.
                     if let Some(gateway) = gateway_opt {
                         match gateway.get_any_address(igd::PortMappingProtocol::TCP,
-                                                      local_addr_v4, 0,
-                                                      "rust nat_traversal")
-                        {
+                                                      local_addr_v4,
+                                                      0,
+                                                      "rust nat_traversal") {
                             Ok(external_addr) => {
                                 endpoints.push(MappedSocketAddr {
                                     addr: SocketAddr(net::SocketAddr::V4(external_addr)),
                                     nat_restricted: false,
                                 });
-                            },
+                            }
                             Err(e) => {
                                 warnings.push(MappedTcpSocketMapWarning::GetExternalPort {
                                     gateway_addr: gateway.addr,
@@ -369,27 +372,30 @@ impl MappedTcpSocket {
                         }
                     };
                 };
-            },
+            }
             IpAddr::V6(ipv6_addr) => {
                 if socket_utils::ipv6_is_unspecified(&ipv6_addr) {
                     // If the socket address is unspecified add an address for every interface.
                     for iface_v6 in mapping_context::interfaces_v6(&mc) {
-                        let local_iface_addr = net::SocketAddr::V6(net::SocketAddrV6::new(iface_v6.addr, local_addr.port(), 0, 0));
+                        let local_iface_addr =
+                            net::SocketAddr::V6(net::SocketAddrV6::new(iface_v6.addr,
+                                                                       local_addr.port(),
+                                                                       0,
+                                                                       0));
                         endpoints.push(MappedSocketAddr {
                             addr: SocketAddr(local_iface_addr),
                             nat_restricted: false,
                         });
-                    };
-                }
-                else {
+                    }
+                } else {
                     endpoints.push(MappedSocketAddr {
                         addr: SocketAddr(net::SocketAddr::V6(net::SocketAddrV6::new(ipv6_addr, local_addr.port(), 0, 0))),
                         nat_restricted: false,
                     });
                 }
-            },
+            }
         };
-        
+
         let (results_tx, results_rx) = mpsc::channel();
         let mut mapping_threads = Vec::new();
         let simple_servers = mapping_context::simple_tcp_servers(&mc);
@@ -402,48 +408,61 @@ impl MappedTcpSocket {
                     if ipv4_addr.is_private() || ipv4_addr.is_loopback() {
                         continue;
                     };
-                },
+                }
                 IpAddr::V6(ipv6_addr) => {
                     if ipv6_addr.is_loopback() {
                         continue;
                     };
-                },
+                }
             };
             let results_tx = results_tx.clone();
             mapping_threads.push(thread::spawn(move || {
                 let map = move || {
                     let mapping_socket = match new_reusably_bound_tcp_socket(&local_addr) {
                         Ok(mapping_socket) => mapping_socket,
-                        Err(e) => return Err(MappedTcpSocketMapWarning::NewReusablyBoundTcpSocket { err: e }),
+                        Err(e) => {
+                            return Err(MappedTcpSocketMapWarning::NewReusablyBoundTcpSocket {
+                                err: e,
+                            })
+                        }
                     };
                     let mut stream = match mapping_socket.connect(&*simple_server) {
                         Ok(stream) => stream,
-                        Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketConnect {
-                            addr: simple_server,
-                            err: e
-                        }),
+                        Err(e) => {
+                            return Err(MappedTcpSocketMapWarning::MappingSocketConnect {
+                                addr: simple_server,
+                                err: e,
+                            })
+                        }
                     };
                     let send_data = listener_message::REQUEST_MAGIC_CONSTANT;
                     // TODO(canndrew): What should we do if we get a partial write?
                     let _ = match stream.write(&send_data[..]) {
                         Ok(n) => n,
-                        Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketWrite { err: e }),
+                        Err(e) => {
+                            return Err(MappedTcpSocketMapWarning::MappingSocketWrite { err: e })
+                        }
                     };
 
                     const MAX_DATAGRAM_SIZE: usize = 256;
                     let mut recv_data = [0u8; MAX_DATAGRAM_SIZE];
                     let n = match stream.read(&mut recv_data[..]) {
                         Ok(n) => n,
-                        Err(e) => return Err(MappedTcpSocketMapWarning::MappingSocketRead { err: e }),
+                        Err(e) => {
+                            return Err(MappedTcpSocketMapWarning::MappingSocketRead { err: e })
+                        }
                     };
-                    let listener_message::EchoExternalAddr { external_addr } = match deserialise::<listener_message::EchoExternalAddr>(&recv_data[..n]) {
-                        Ok(msg) => msg,
-                        Err(e) => return Err(MappedTcpSocketMapWarning::Deserialise {
-                            addr: simple_server,
-                            err: e,
-                            response: recv_data[..n].to_vec(),
-                        }),
-                    };
+                    let listener_message::EchoExternalAddr { external_addr } =
+                        match deserialise::<listener_message::EchoExternalAddr>(&recv_data[..n]) {
+                            Ok(msg) => msg,
+                            Err(e) => {
+                                return Err(MappedTcpSocketMapWarning::Deserialise {
+                                    addr: simple_server,
+                                    err: e,
+                                    response: recv_data[..n].to_vec(),
+                                })
+                            }
+                        };
                     Ok(external_addr)
                 };
                 let _ = results_tx.send(map());
@@ -463,21 +482,23 @@ impl MappedTcpSocket {
                     if num_results >= 2 {
                         break;
                     }
-                },
+                }
                 Err(e) => {
                     warnings.push(e);
-                },
+                }
             }
         }
 
         WOk(MappedTcpSocket {
-            socket: socket,
-            endpoints: endpoints,
-        }, warnings)
+                socket: socket,
+                endpoints: endpoints,
+            },
+            warnings)
     }
 
     /// Create a new `MappedTcpSocket`
-    pub fn new(mc: &MappingContext) -> WResult<MappedTcpSocket, MappedTcpSocketMapWarning, MappedTcpSocketNewError> {
+    pub fn new(mc: &MappingContext)
+               -> WResult<MappedTcpSocket, MappedTcpSocketMapWarning, MappedTcpSocketNewError> {
         let socket = match net2::TcpBuilder::new_v4() {
             Ok(socket) => socket,
             Err(e) => return WErr(MappedTcpSocketNewError::CreateSocket { err: e }),
@@ -493,7 +514,7 @@ impl MappedTcpSocket {
         // need to connect to a bunch of guys in parallel and get our addresses.
         // need a bunch of sockets that are bound to the same local port.
         match socket.bind("0.0.0.0:0") {
-            Ok(_)  => (),
+            Ok(_) => (),
             Err(e) => return WErr(MappedTcpSocketNewError::Bind { err: e }),
         };
 
@@ -539,7 +560,10 @@ pub struct TcpPunchHoleBrokenStream {
 
 impl fmt::Display for TcpPunchHoleBrokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Broken stream with peer addr {} errored: {}", self.peer_addr, self.error)
+        write!(f,
+               "Broken stream with peer addr {} errored: {}",
+               self.peer_addr,
+               self.error)
     }
 }
 
@@ -581,11 +605,12 @@ impl From<TcpPunchHoleError> for io::Error {
             TcpPunchHoleError::NewReusablyBoundTcpSocket { err } => {
                 let err: io::Error = From::from(err);
                 err.kind()
-            },
+            }
             TcpPunchHoleError::Listen { err } => err.kind(),
             TcpPunchHoleError::TimedOut { .. } => io::ErrorKind::TimedOut,
-            TcpPunchHoleError::DecideStream { errors }
-                => errors.first().map(|bs| bs.error.kind()).unwrap_or(io::ErrorKind::Other),
+            TcpPunchHoleError::DecideStream { errors } => {
+                errors.first().map(|bs| bs.error.kind()).unwrap_or(io::ErrorKind::Other)
+            }
         };
         io::Error::new(kind, err_str)
     }
@@ -609,14 +634,15 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
 
     // The total timeout for the entire function.
     let start_time = SteadyTime::now();
-    let deadline = start_time + time::Duration::seconds(10);
+    let deadline = start_time + time::Duration::seconds(60);
 
     let mut warnings = Vec::new();
 
     let shutdown = Arc::new(AtomicBool::new(false));
 
     // The channel we will use to collect the results from the many worker threads.
-    let (results_tx, results_rx) = mpsc::channel::<Option<Result<(TcpStream, SocketAddr), TcpPunchHoleWarning>>>();
+    let (results_tx, results_rx) = mpsc::channel::<Option<Result<(TcpStream, SocketAddr),
+                                                                 TcpPunchHoleWarning>>>();
 
     let our_secret = rendezvous_info::get_priv_secret(our_priv_rendezvous_info);
     let (their_endpoints, their_secret) = rendezvous_info::decompose(their_pub_rendezvous_info);
@@ -641,10 +667,12 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
             let f = |timeout| {
                 let mut stream = match mapping_socket.connect(&*addr) {
                     Ok(stream) => stream,
-                    Err(e) => return Err(TcpPunchHoleWarning::Connect {
-                        peer_addr: addr,
-                        err: e,
-                    }),
+                    Err(e) => {
+                        return Err(TcpPunchHoleWarning::Connect {
+                            peer_addr: addr,
+                            err: e,
+                        })
+                    }
                 };
                 match stream.set_write_timeout(Some(timeout)) {
                     Ok(()) => (),
@@ -656,18 +684,22 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                 };
                 match stream.write_all(&our_secret[..]) {
                     Ok(()) => (),
-                    Err(e) => return Err(TcpPunchHoleWarning::StreamIo {
-                        peer_addr: addr,
-                        err: e,
-                    }),
+                    Err(e) => {
+                        return Err(TcpPunchHoleWarning::StreamIo {
+                            peer_addr: addr,
+                            err: e,
+                        })
+                    }
                 };
                 let mut recv_data = [0u8; 4];
                 match stream.read_exact(&mut recv_data[..]) {
                     Ok(()) => (),
-                    Err(e) => return Err(TcpPunchHoleWarning::StreamIo {
-                        peer_addr: addr,
-                        err: e,
-                    }),
+                    Err(e) => {
+                        return Err(TcpPunchHoleWarning::StreamIo {
+                            peer_addr: addr,
+                            err: e,
+                        })
+                    }
                 };
                 if recv_data != their_secret {
                     return Err(TcpPunchHoleWarning::InvalidResponse {
@@ -689,26 +721,25 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                 let now = SteadyTime::now();
                 if now >= deadline || shutdown_clone.load(Ordering::SeqCst) {
                     break;
-                }
-                else {
+                } else {
                     let timeout = deadline - now;
                     let timeout = utils::time_duration_to_std_duration(timeout);
                     match f(timeout) {
                         Ok(stream) => {
                             let _ = results_tx_clone.send(Some(Ok((stream, addr))));
                             break;
-                        },
+                        }
                         Err(e) => {
                             let _ = results_tx_clone.send(Some(Err(e)));
                             // So we don't continuously hammer an address we can't connect to.
                             thread::sleep(Duration::from_secs(1));
                             continue;
-                        },
+                        }
                     }
                 }
             }
         });
-    };
+    }
 
     // Listen for incoming connections.
     let listener = match socket.listen(128) {
@@ -731,10 +762,10 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                         Ok(()) => (),
                         Err(_) => {
                             break;
-                        },
+                        }
                     }
                     continue;
-                },
+                }
             };
 
             // Spawn a new thread here to prevent someone from connecting then not sending any data
@@ -752,14 +783,14 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                     Err(e) => {
                         let _ = results_tx_clone.send(Some(Err(TcpPunchHoleWarning::StreamSetTimeout { err: e })));
                         return;
-                    },
+                    }
                 };
                 match stream.set_read_timeout(Some(timeout)) {
                     Ok(()) => (),
                     Err(e) => {
                         let _ = results_tx_clone.send(Some(Err(TcpPunchHoleWarning::StreamSetTimeout { err: e })));
                         return;
-                    },
+                    }
                 };
                 match stream.write_all(&our_secret[..]) {
                     Ok(()) => (),
@@ -769,7 +800,7 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                             err: e,
                         })));
                         return;
-                    },
+                    }
                 };
                 let mut recv_data = [0u8; 4];
                 match stream.read_exact(&mut recv_data[..]) {
@@ -780,13 +811,14 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                             err: e,
                         })));
                         return;
-                    },
+                    }
                 };
                 if recv_data != their_secret {
-                    let _ = results_tx_clone.send(Some(Err(TcpPunchHoleWarning::InvalidResponse {
-                        peer_addr: SocketAddr(addr),
-                        data: recv_data,
-                    })));
+                    let _ =
+                        results_tx_clone.send(Some(Err(TcpPunchHoleWarning::InvalidResponse {
+                            peer_addr: SocketAddr(addr),
+                            data: recv_data,
+                        })));
                     return;
                 }
                 match stream.set_write_timeout(None) {
@@ -794,20 +826,20 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                     Err(e) => {
                         let _ = results_tx_clone.send(Some(Err(TcpPunchHoleWarning::StreamSetTimeout { err: e })));
                         return;
-                    },
+                    }
                 };
                 match stream.set_read_timeout(None) {
                     Ok(()) => (),
                     Err(e) => {
                         let _ = results_tx_clone.send(Some(Err(TcpPunchHoleWarning::StreamSetTimeout { err: e })));
                         return;
-                    },
+                    }
                 };
                 let _ = results_tx_clone.send(Some(Ok((stream, SocketAddr(addr)))));
             });
         }
     });
-    
+
     // Create a separate thread for timing out.
     // TODO(canndrew): We won't need to do this one this is fixed: https://github.com/rust-lang/rfcs/issues/962
     let results_tx_clone = results_tx.clone();
@@ -821,8 +853,9 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
     let timeout_thread_handle = timeout_thread.thread();
 
     drop(results_tx);
-    let acceptor_addr = net::SocketAddr::new(socket_utils::ip_unspecified_to_loopback(local_addr.ip()),
-                                             local_addr.port());
+    let acceptor_addr =
+        net::SocketAddr::new(socket_utils::ip_unspecified_to_loopback(local_addr.ip()),
+                             local_addr.port());
     // Process the results that the worker threads send us.
     loop {
         match results_rx.recv() {
@@ -836,12 +869,12 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                 shutdown.store(true, Ordering::SeqCst);
                 let _ = TcpStream::connect(&acceptor_addr);
                 return WErr(TcpPunchHoleError::TimedOut { warnings: warnings });
-            },
-            
+            }
+
             // One of the worker threads raised a warning.
             Ok(Some(Err(e))) => {
                 warnings.push(e);
-            },
+            }
 
             // Success!
             Ok(Some(Ok((stream, stream_addr)))) => {
@@ -860,7 +893,9 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                         // got a successful connection.
                         Some(Err(_)) => (),
                         // We made another connection.
-                        Some(Ok((stream, stream_addr))) => other_streams.push((stream, stream_addr)),
+                        Some(Ok((stream, stream_addr))) => {
+                            other_streams.push((stream, stream_addr))
+                        }
                     };
                 }
 
@@ -868,35 +903,40 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
 
                 if other_streams.len() == 0 {
                     return WOk(stream, warnings);
-                }
-                else {
+                } else {
                     // We have more than one stream. Both sides need to agree on which stream to
                     // keep and which streams to discard. To decide, we write and read a random u64
                     // to each stream, sum the read and written values, and take the stream with
                     // the highest sum.
-                    
+
                     let mut errors = Vec::new();
                     other_streams.push((stream, stream_addr));
 
                     // Write the random u64 to each stream.
-                    let streams: Vec<(TcpStream, SocketAddr, u64)> = other_streams.into_iter().filter_map(|(mut stream, stream_addr)| {
-                        let w = random();
-                        match stream.write_u64::<BigEndian>(w) {
-                            Ok(()) => (),
-                            Err(e) => {
-                                errors.push(TcpPunchHoleBrokenStream {
-                                    peer_addr: stream_addr,
-                                    error: e,
-                                });
-                                return None;
-                            },
-                        };
-                        Some((stream, stream_addr, w))
-                    }).collect();
+                    let streams: Vec<(TcpStream, SocketAddr, u64)> =
+                        other_streams.into_iter()
+                                     .filter_map(|(mut stream, stream_addr)| {
+                                         let w = random();
+                                         match stream.write_u64::<BigEndian>(w) {
+                                             Ok(()) => (),
+                                             Err(e) => {
+                                                 errors.push(TcpPunchHoleBrokenStream {
+                                                     peer_addr: stream_addr,
+                                                     error: e,
+                                                 });
+                                                 return None;
+                                             }
+                                         };
+                                         Some((stream, stream_addr, w))
+                                     })
+                                     .collect();
 
                     // Read the random u64 from each stream while keeping hold of the stream with
                     // the highest sum so far.
-                    let stream_opt = streams.into_iter().fold(None, |opt, (mut this_stream, this_stream_addr, w)| {
+                    let stream_opt = streams.into_iter().fold(None, |opt,
+                                                               (mut this_stream,
+                                                                this_stream_addr,
+                                                                w)| {
                         // Calculate the sum for this stream.
                         let this_sum = match this_stream.read_u64::<BigEndian>() {
                             Ok(r) => r.wrapping_add(w),
@@ -906,7 +946,7 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                                     error: e,
                                 });
                                 return opt;
-                            },
+                            }
                         };
                         // If the sum is greater than the current highest (or we don't have a
                         // current highest yet), replace the highest stream and sum with this
@@ -915,12 +955,11 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                             Some((top_stream, top_sum)) => {
                                 if this_sum > top_sum {
                                     Some((this_stream, this_sum))
-                                }
-                                else {
+                                } else {
                                     Some((top_stream, top_sum))
                                 }
-                            },
-                            None => Some((this_stream, this_sum))
+                            }
+                            None => Some((this_stream, this_sum)),
                         }
                     });
 
@@ -934,16 +973,14 @@ pub fn tcp_punch_hole(socket: net2::TcpBuilder,
                                 }
                             }));
                             return WOk(stream, warnings);
-                        },
+                        }
                         // Every stream died while deciding which stream to use.
                         None => {
-                            return WErr(TcpPunchHoleError::DecideStream {
-                                errors: errors,
-                            });
+                            return WErr(TcpPunchHoleError::DecideStream { errors: errors });
                         }
                     }
                 }
-            },
+            }
         }
     }
 }
@@ -972,7 +1009,8 @@ mod test {
         let (priv_info_1, pub_info_1) = gen_rendezvous_info(endpoints_1);
 
         let thread_0 = thread!("two_peers_tcp_hole_punch_over_loopback_0", move || {
-            let mut stream = unwrap_result!(tcp_punch_hole(socket_0, priv_info_0, pub_info_1).result_log());
+            let mut stream = unwrap_result!(tcp_punch_hole(socket_0, priv_info_0, pub_info_1)
+                                                .result_log());
             let mut data = [0u8; 4];
             let n = unwrap_result!(stream.write(&data));
             assert_eq!(n, 4);
@@ -982,7 +1020,8 @@ mod test {
         });
 
         let thread_1 = thread!("two_peers_tcp_hole_punch_over_loopback_1", move || {
-            let mut stream = unwrap_result!(tcp_punch_hole(socket_1, priv_info_1, pub_info_0).result_log());
+            let mut stream = unwrap_result!(tcp_punch_hole(socket_1, priv_info_1, pub_info_0)
+                                                .result_log());
             let mut data = [1u8; 4];
             let n = unwrap_result!(stream.write(&data));
             assert_eq!(n, 4);
@@ -995,4 +1034,3 @@ mod test {
         unwrap_result!(thread_1.join());
     }
 }
-
