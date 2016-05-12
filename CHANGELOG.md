@@ -1,5 +1,8 @@
 # NAT Traversal - Change Log
 
+## [0.4.1]
+- Exit MappedTcpSocket::map early after discovering two external addresses.
+
 ## [0.4.0]
 - All blocking methods take a deadline parameter
 
