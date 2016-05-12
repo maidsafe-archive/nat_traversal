@@ -1,5 +1,8 @@
 # NAT Traversal - Change Log
 
+## [0.3.4]
+- Increase the hole punch timeout to 60 seconds.
+
 ## [0.3.3]
 - Tcp mapping and punching functions time-out eagerly
 
