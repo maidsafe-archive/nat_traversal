@@ -1041,6 +1041,11 @@
 <span id="998"> 998</span>
 <span id="999"> 999</span>
 <span id="1000">1000</span>
+<span id="1001">1001</span>
+<span id="1002">1002</span>
+<span id="1003">1003</span>
+<span id="1004">1004</span>
+<span id="1005">1005</span>
 </pre><pre class='rust '>
 <span class='comment'>// Copyright 2016 MaidSafe.net limited.</span>
 <span class='comment'>//</span>
@@ -1500,6 +1505,7 @@
             <span class='kw'>let</span> _ <span class='op'>=</span> <span class='ident'>results_tx</span>.<span class='ident'>send</span>(<span class='prelude-val'>None</span>);
         });
 
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>num_results</span> <span class='op'>=</span> <span class='number'>0</span>;
         <span class='kw'>for</span> <span class='ident'>result</span> <span class='kw'>in</span> <span class='ident'>results_rx</span> {
             <span class='kw'>match</span> <span class='ident'>result</span> {
                 <span class='prelude-val'>Some</span>(<span class='prelude-val'>Ok</span>(<span class='ident'>external_addr</span>)) <span class='op'>=&gt;</span> {
@@ -1507,6 +1513,10 @@
                         <span class='ident'>addr</span>: <span class='ident'>external_addr</span>,
                         <span class='ident'>nat_restricted</span>: <span class='boolval'>true</span>,
                     });
+                    <span class='ident'>num_results</span> <span class='op'>+=</span> <span class='number'>1</span>;
+                    <span class='kw'>if</span> <span class='ident'>num_results</span> <span class='op'>&gt;=</span> <span class='number'>2</span> {
+                        <span class='kw'>break</span>;
+                    }
                 },
                 <span class='prelude-val'>Some</span>(<span class='prelude-val'>Err</span>(<span class='ident'>e</span>)) <span class='op'>=&gt;</span> {
                     <span class='ident'>warnings</span>.<span class='ident'>push</span>(<span class='ident'>e</span>);
