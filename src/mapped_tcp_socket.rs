@@ -456,6 +456,7 @@ impl MappedTcpSocket {
             let _ = results_tx.send(None);
         });
 
+        let mut num_results = 0;
         for result in results_rx {
             match result {
                 Some(Ok(external_addr)) => {
@@ -463,6 +464,10 @@ impl MappedTcpSocket {
                         addr: external_addr,
                         nat_restricted: true,
                     });
+                    num_results += 1;
+                    if num_results >= 2 {
+                        break;
+                    }
                 },
                 Some(Err(e)) => {
                     warnings.push(e);
