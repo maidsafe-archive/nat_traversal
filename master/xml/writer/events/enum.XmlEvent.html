@@ -11,6 +11,7 @@
 
     <link rel="stylesheet" type="text/css" href="../../../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../../../main.css">
+    
 
     
     
@@ -43,10 +44,10 @@
 
     <section id='main' class="content enum">
 <h1 class='fqn'><span class='in-band'>Enum <a href='../../index.html'>xml</a>::<wbr><a href='../index.html'>writer</a>::<wbr><a href='index.html'>events</a>::<wbr><a class='enum' href=''>XmlEvent</a></span><span class='out-of-band'><span id='render-detail'>
-            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
-                [<span class='inner'>&#x2212;</span>]
-            </a>
-        </span><a id='src-2751' class='srclink' href='../../../src/xml/writer/events.rs.html#14-93' title='goto source code'>[src]</a></span></h1>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-2721' class='srclink' href='../../../src/xml/writer/events.rs.html#14-93' title='goto source code'>[src]</a></span></h1>
 <pre class='rust enum'>pub enum XmlEvent&lt;'a&gt; {
     StartDocument {
         version: <a class='enum' href='../../../xml/common/enum.XmlVersion.html' title='xml::common::XmlVersion'>XmlVersion</a>,
@@ -80,7 +81,7 @@ at all, a default XML declaration will be outputted if the corresponding option
 is set in the configuration. Otherwise an error will be returned.</p>
 </div><h3 class='fields'>Fields</h3>
 
-                                              <table><tr><td id='variant.StartDocument.field.version'><code>version</code></td><td><div class='docblock'><p>XML version.</p>
+                           <table><tr><td id='variant.StartDocument.field.version'><code>version</code></td><td><div class='docblock'><p>XML version.</p>
 
 <p>Defaults to <code>XmlVersion::Version10</code>.</p>
 </div></td></tr><tr><td id='variant.StartDocument.field.encoding'><code>encoding</code></td><td><div class='docblock'><p>XML document encoding.</p>
@@ -92,12 +93,12 @@ is set in the configuration. Otherwise an error will be returned.</p>
 </div></td></tr></table></td><td></td></tr><tr><td id='variant.ProcessingInstruction'><code>ProcessingInstruction</code></td><td><div class='docblock'><p>Denotes an XML processing instruction.</p>
 </div><h3 class='fields'>Fields</h3>
 
-                                              <table><tr><td id='variant.ProcessingInstruction.field.name'><code>name</code></td><td><div class='docblock'><p>Processing instruction target.</p>
+                           <table><tr><td id='variant.ProcessingInstruction.field.name'><code>name</code></td><td><div class='docblock'><p>Processing instruction target.</p>
 </div></td></tr><tr><td id='variant.ProcessingInstruction.field.data'><code>data</code></td><td><div class='docblock'><p>Processing instruction content.</p>
 </div></td></tr></table></td><td></td></tr><tr><td id='variant.StartElement'><code>StartElement</code></td><td><div class='docblock'><p>Denotes a beginning of an XML element.</p>
 </div><h3 class='fields'>Fields</h3>
 
-                                              <table><tr><td id='variant.StartElement.field.name'><code>name</code></td><td><div class='docblock'><p>Qualified name of the element.</p>
+                           <table><tr><td id='variant.StartElement.field.name'><code>name</code></td><td><div class='docblock'><p>Qualified name of the element.</p>
 </div></td></tr><tr><td id='variant.StartElement.field.attributes'><code>attributes</code></td><td><div class='docblock'><p>A list of attributes associated with the element.</p>
 
 <p>Currently attributes are not checked for duplicates (TODO). Attribute values
@@ -111,7 +112,7 @@ attributes will be emitted.</p>
 </div></td></tr></table></td><td></td></tr><tr><td id='variant.EndElement'><code>EndElement</code></td><td><div class='docblock'><p>Denotes an end of an XML element.</p>
 </div><h3 class='fields'>Fields</h3>
 
-                                              <table><tr><td id='variant.EndElement.field.name'><code>name</code></td><td><div class='docblock'><p>Optional qualified name of the element.</p>
+                           <table><tr><td id='variant.EndElement.field.name'><code>name</code></td><td><div class='docblock'><p>Optional qualified name of the element.</p>
 
 <p>If <code>None</code>, then it is assumed that the element name should be the last valid one.
 If <code>Some</code> and element names tracking is enabled, then the writer will check it for
@@ -152,9 +153,9 @@ is disabled, it is possible to specify the name with <code>name()</code> method 
 <p>All offending symbols, in particular, <code>&amp;</code> and <code>&lt;</code>, will be escaped by the writer.</p>
 </div><h4 id='method.comment' class='method'><code>fn <a href='#method.comment' class='fnname'>comment</a>(data: &amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h4>
 <div class='docblock'><p>Returns a comment event.</p>
-</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/convert/trait.From.html' title='core::convert::From'>From</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt; for <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.from' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/convert/trait.From.html#method.from' class='fnname'>from</a>(s: &amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h4>
-</div><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/convert/trait.From.html' title='core::convert::From'>From</a>&lt;<a class='struct' href='../../../xml/writer/events/struct.EndElementBuilder.html' title='xml::writer::events::EndElementBuilder'>EndElementBuilder</a>&lt;'a&gt;&gt; for <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.from-1' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/convert/trait.From.html#method.from' class='fnname'>from</a>(b: <a class='struct' href='../../../xml/writer/events/struct.EndElementBuilder.html' title='xml::writer::events::EndElementBuilder'>EndElementBuilder</a>&lt;'a&gt;) -&gt; <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h4>
-</div><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/convert/trait.From.html' title='core::convert::From'>From</a>&lt;<a class='struct' href='../../../xml/writer/events/struct.StartElementBuilder.html' title='xml::writer::events::StartElementBuilder'>StartElementBuilder</a>&lt;'a&gt;&gt; for <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.from-2' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/convert/trait.From.html#method.from' class='fnname'>from</a>(b: <a class='struct' href='../../../xml/writer/events/struct.StartElementBuilder.html' title='xml::writer::events::StartElementBuilder'>StartElementBuilder</a>&lt;'a&gt;) -&gt; <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h4>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/convert/trait.From.html' title='core::convert::From'>From</a>&lt;&amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt; for <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.from' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/convert/trait.From.html#tymethod.from' class='fnname'>from</a>(s: &amp;'a <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h4>
+</div><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/convert/trait.From.html' title='core::convert::From'>From</a>&lt;<a class='struct' href='../../../xml/writer/events/struct.EndElementBuilder.html' title='xml::writer::events::EndElementBuilder'>EndElementBuilder</a>&lt;'a&gt;&gt; for <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.from-1' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/convert/trait.From.html#tymethod.from' class='fnname'>from</a>(b: <a class='struct' href='../../../xml/writer/events/struct.EndElementBuilder.html' title='xml::writer::events::EndElementBuilder'>EndElementBuilder</a>&lt;'a&gt;) -&gt; <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h4>
+</div><h3 class='impl'><code>impl&lt;'a&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/convert/trait.From.html' title='core::convert::From'>From</a>&lt;<a class='struct' href='../../../xml/writer/events/struct.StartElementBuilder.html' title='xml::writer::events::StartElementBuilder'>StartElementBuilder</a>&lt;'a&gt;&gt; for <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.from-2' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/convert/trait.From.html#tymethod.from' class='fnname'>from</a>(b: <a class='struct' href='../../../xml/writer/events/struct.StartElementBuilder.html' title='xml::writer::events::StartElementBuilder'>StartElementBuilder</a>&lt;'a&gt;) -&gt; <a class='enum' href='../../../xml/writer/events/enum.XmlEvent.html' title='xml::writer::events::XmlEvent'>XmlEvent</a>&lt;'a&gt;</code></h4>
 </div></section>
     <section id='search' class="content hidden"></section>
 

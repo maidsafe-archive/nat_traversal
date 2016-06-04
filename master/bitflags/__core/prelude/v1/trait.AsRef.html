@@ -11,6 +11,7 @@
 
     <link rel="stylesheet" type="text/css" href="../../../../rustdoc.css">
     <link rel="stylesheet" type="text/css" href="../../../../main.css">
+    
 
     
     
@@ -43,10 +44,10 @@
 
     <section id='main' class="content trait">
 <h1 class='fqn'><span class='in-band'>Trait <a href='../../../index.html'>bitflags</a>::<wbr><a href='../../index.html'>__core</a>::<wbr><a href='../index.html'>prelude</a>::<wbr><a href='index.html'>v1</a>::<wbr><a class='trait' href=''>AsRef</a></span><span class='out-of-band'><span id='render-detail'>
-            <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
-                [<span class='inner'>&#x2212;</span>]
-            </a>
-        </span><a id='src-22734' class='srclink' href='https://doc.rust-lang.org/nightly/core/convert/trait.AsRef.html?gotosrc=22734' title='goto source code'>[src]</a></span></h1>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-22570' class='srclink' href='https://doc.rust-lang.org/nightly/core/convert/trait.AsRef.html?gotosrc=22570' title='goto source code'>[src]</a></span></h1>
 <pre class='rust trait'>pub trait AsRef&lt;T&gt; <span class='where'>where T: ?<a class='trait' href='../../../../bitflags/__core/marker/trait.Sized.html' title='bitflags::__core::marker::Sized'>Sized</a></span> {
     fn <a href='#tymethod.as_ref' class='fnname'>as_ref</a>(&amp;self) -&gt; &amp;T;
 }</pre><div class='docblock'><p>A cheap, reference-to-reference conversion.</p>
@@ -55,7 +56,7 @@
 <a href="../../book/borrow-and-asref.html">the book</a> for more.</p>
 
 <p><strong>Note: this trait must not fail</strong>. If the conversion can fail, use a dedicated method which
-return an <code>Option&lt;T&gt;</code> or a <code>Result&lt;T, E&gt;</code>.</p>
+returns an <code>Option&lt;T&gt;</code> or a <code>Result&lt;T, E&gt;</code>.</p>
 
 <h1 id='examples' class='section-header'><a href='#examples'>Examples</a></h1>
 <p>Both <code>String</code> and <code>&amp;str</code> implement <code>AsRef&lt;str&gt;</code>:</p>
@@ -83,47 +84,45 @@ reference (eg: <code>foo.as_ref()</code> will work the same if <code>foo</code> 
 </div></div>
         <h2 id='implementors'>Implementors</h2>
         <ul class='item-list' id='implementors-list'>
-    <li><code>impl&lt;'a, T, U&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;U&gt; for &amp;'a T <span class='where'>where U: ?<a class='trait' href='../../../../bitflags/__core/marker/trait.Sized.html' title='bitflags::__core::marker::Sized'>Sized</a>, T: <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;U&gt; + ?<a class='trait' href='../../../../bitflags/__core/marker/trait.Sized.html' title='bitflags::__core::marker::Sized'>Sized</a></span></code></li>
-<li><code>impl&lt;'a, T, U&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;U&gt; for &amp;'a mut T <span class='where'>where T: <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;U&gt; + ?<a class='trait' href='../../../../bitflags/__core/marker/trait.Sized.html' title='bitflags::__core::marker::Sized'>Sized</a>, U: ?<a class='trait' href='../../../../bitflags/__core/marker/trait.Sized.html' title='bitflags::__core::marker::Sized'>Sized</a></span></code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T]</code></li>
-<li><code>impl <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;str&gt; for str</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 0]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 1]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 2]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 3]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 4]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 5]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 6]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 7]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 8]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 9]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 10]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 11]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 12]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 13]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 14]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 15]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 16]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 17]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 18]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 19]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 20]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 21]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 22]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 23]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 24]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 25]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 26]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 27]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 28]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 29]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 30]</code></li>
-<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 31]</code></li>
+    <li><code>impl <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[u8]&gt; for str</code></li>
 <li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 32]</code></li>
-<li><code>impl <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[u8]&gt; for str</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 31]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 30]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 29]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 28]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 27]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 26]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 25]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 24]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 23]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 22]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 21]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 20]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 19]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 18]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 17]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 16]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 15]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 14]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 13]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 12]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 11]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 10]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 9]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 8]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 7]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 6]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 5]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 4]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 3]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 2]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 1]</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T; 0]</code></li>
+<li><code>impl <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;str&gt; for str</code></li>
+<li><code>impl&lt;T&gt; <a class='trait' href='../../../../bitflags/__core/convert/trait.AsRef.html' title='bitflags::__core::convert::AsRef'>AsRef</a>&lt;[T]&gt; for [T]</code></li>
 </ul><script type="text/javascript" async
-                              src="../../../../implementors/core/convert/trait.AsRef.js">
-                      </script></section>
+                         src="../../../../implementors/core/convert/trait.AsRef.js">
+                 </script></section>
     <section id='search' class="content hidden"></section>
 
     <section class="footer"></section>
