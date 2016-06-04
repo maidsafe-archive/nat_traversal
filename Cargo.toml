@@ -1,9 +1,9 @@
 [package]
 authors = ["MaidSafe Developers <dev@maidsafe.net>"]
 description = "NAT traversal utilities."
-documentation = "http://maidsafe.net/nat_traversal/latest"
+documentation = "http://docs.maidsafe.net/nat_traversal/latest"
 homepage = "http://maidsafe.net"
-license = "GPL-3.0"
+license = "GPL-3.0/MaidSafe.net Commercial License 1.0"
 name = "nat_traversal"
 readme = "README.md"
 repository = "https://github.com/maidsafe/nat_traversal"
