@@ -1,3 +1,9 @@
+# ***This repository is no longer maintained***
+# It has been moved to the maidsafe-archive organisation for reference only
+#
+#
+#
+#
 # nat_traversal
 
 **Maintainer:** Spandan Sharma (spandan.sharma@maidsafe.net)
